@@ -25,11 +25,7 @@ export default function Home() {
       </div>
       <nav aria-label="Learning workspace" className="grid gap-3 sm:grid-cols-2">
         {routes.map(([label, href]) => (
-          <a
-            key={href}
-            className="rounded-lg border p-4 font-medium hover:bg-muted"
-            href={href}
-          >
+          <a key={href} className="rounded-lg border p-4 font-medium hover:bg-muted" href={href}>
             {label} <span aria-hidden="true">→</span>
           </a>
         ))}
@@ -37,4 +33,3 @@ export default function Home() {
     </main>
   );
 }
-

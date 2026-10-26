@@ -1,10 +1,15 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { browserSessionPersistence, connectAuthEmulator, getAuth, setPersistence } from "firebase/auth";
+import {
+  browserSessionPersistence,
+  connectAuthEmulator,
+  getAuth,
+  setPersistence,
+} from "firebase/auth";
 import { getPublicFirebaseConfig } from "@/lib/firebase/config";
 
 let authPromise: ReturnType<typeof initializeAuth> | undefined;
 
-function initializeAuth() {
+async function initializeAuth() {
   const config = getPublicFirebaseConfig({
     NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -13,12 +18,14 @@ function initializeAuth() {
     NEXT_PUBLIC_USE_FIREBASE_EMULATORS: process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS,
     NODE_ENV: process.env.NODE_ENV,
   });
-  const app = getApps().length ? getApp() : initializeApp({
-    apiKey: config.apiKey,
-    authDomain: config.authDomain,
-    projectId: config.projectId,
-    appId: config.appId,
-  });
+  const app = getApps().length
+    ? getApp()
+    : initializeApp({
+        apiKey: config.apiKey,
+        authDomain: config.authDomain,
+        projectId: config.projectId,
+        appId: config.appId,
+      });
   const auth = getAuth(app);
   const persistence = setPersistence(auth, browserSessionPersistence);
   if (config.useEmulators && !auth.emulatorConfig) {

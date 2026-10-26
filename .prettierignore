@@ -1,0 +1,22 @@
+# Dependencies and generated output
+node_modules/
+.next/
+out/
+build/
+coverage/
+.firebase/
+.vercel/
+next-env.d.ts
+*.tsbuildinfo
+*.log
+
+# Local configuration and agent resources
+.env*
+.aws/
+.codex/
+.agents/
+graphify-out/
+
+# Generated lockfiles
+package-lock.json
+skills-lock.json

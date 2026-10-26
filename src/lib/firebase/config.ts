@@ -56,16 +56,20 @@ export function getServerFirebaseConfig(env: Environment): FirebaseServerConfig 
   if (projectId !== publicProjectId) {
     throw new ConfigurationError("Firebase project IDs must match.");
   }
-  if (useEmulators && (
-    env.NODE_ENV === "production" ||
-    projectId !== "demo-learning-pwa" ||
-    env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS !== "true" ||
-    authEmulator !== "127.0.0.1:9099" ||
-    firestoreEmulator !== "127.0.0.1:8080"
-  )) {
+  if (
+    useEmulators &&
+    (env.NODE_ENV === "production" ||
+      projectId !== "demo-learning-pwa" ||
+      env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS !== "true" ||
+      authEmulator !== "127.0.0.1:9099" ||
+      firestoreEmulator !== "127.0.0.1:8080")
+  ) {
     throw new ConfigurationError("Firebase emulator configuration is invalid.");
   }
-  if (!useEmulators && (authEmulator || firestoreEmulator || env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true")) {
+  if (
+    !useEmulators &&
+    (authEmulator || firestoreEmulator || env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true")
+  ) {
     throw new ConfigurationError("Firebase emulator configuration is invalid.");
   }
 

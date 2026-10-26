@@ -38,20 +38,20 @@ application never calls an LLM to import, grade, or summarize.
 
 ## Scope and success criteria
 
-| Requirement | Observable MVP success | Milestone |
-| --- | --- | --- |
-| Identity and isolation | Anonymous/unapproved users denied; user A cannot access B's packs, attempts, or report | M2, M7 |
-| Versioned content | Example validates; malformed/unsupported packs fail with paths and no writes | M3 |
-| Upload/paste and preview | Both inputs produce the same preview; import requires confirmation | M3 |
-| Duplicate protection | Concurrent identical imports create one pack; changed content under the same ID returns conflict | M3 |
-| Four exercise families | Multiple choice, one blank, short answer, and self-review render and accept typed answers | M4 |
-| Save and resume | Acknowledged draft answers survive sign-out/sign-in; failed saves are visible | M4 |
-| Results and grading | Objective fixtures match documented normalization; manual work is never falsely auto-graded | M5 |
-| Durable history | Retried submit/assessment does not create additional attempts or mutate completed results | M5 |
-| Skill progress | Known attempt fixtures produce exact counters and a clearly labeled bounded window | M6 |
-| Teacher handoff | Owner exports parseable teacher-context v1 without credentials; logged-out requests fail and responses are not cached | M6, M7 |
-| Complete learning loop | Import → save/resume → submit → self-review → report → second import works without any LLM key | M7 |
-| Installability (after core) | Correct icons/manifest and browser installation verification; online behavior is explicit | M8, optional after MVP |
+| Requirement                 | Observable MVP success                                                                                                | Milestone              |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| Identity and isolation      | Anonymous/unapproved users denied; user A cannot access B's packs, attempts, or report                                | M2, M7                 |
+| Versioned content           | Example validates; malformed/unsupported packs fail with paths and no writes                                          | M3                     |
+| Upload/paste and preview    | Both inputs produce the same preview; import requires confirmation                                                    | M3                     |
+| Duplicate protection        | Concurrent identical imports create one pack; changed content under the same ID returns conflict                      | M3                     |
+| Four exercise families      | Multiple choice, one blank, short answer, and self-review render and accept typed answers                             | M4                     |
+| Save and resume             | Acknowledged draft answers survive sign-out/sign-in; failed saves are visible                                         | M4                     |
+| Results and grading         | Objective fixtures match documented normalization; manual work is never falsely auto-graded                           | M5                     |
+| Durable history             | Retried submit/assessment does not create additional attempts or mutate completed results                             | M5                     |
+| Skill progress              | Known attempt fixtures produce exact counters and a clearly labeled bounded window                                    | M6                     |
+| Teacher handoff             | Owner exports parseable teacher-context v1 without credentials; logged-out requests fail and responses are not cached | M6, M7                 |
+| Complete learning loop      | Import → save/resume → submit → self-review → report → second import works without any LLM key                        | M7                     |
+| Installability (after core) | Correct icons/manifest and browser installation verification; online behavior is explicit                             | M8, optional after MVP |
 
 ## Deliberate exclusions and assumptions
 

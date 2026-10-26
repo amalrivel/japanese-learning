@@ -10,7 +10,15 @@ export function GET(request: Request) {
   });
 }
 
-export function POST() { return methodNotAllowed(); }
-export function PUT() { return methodNotAllowed(); }
-export function PATCH() { return methodNotAllowed(); }
-export function DELETE() { return methodNotAllowed(); }
+export function POST() {
+  return methodNotAllowed();
+}
+export function PUT() {
+  return methodNotAllowed();
+}
+export function PATCH() {
+  return methodNotAllowed();
+}
+export function DELETE() {
+  return methodNotAllowed();
+}

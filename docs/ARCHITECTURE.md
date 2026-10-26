@@ -104,11 +104,11 @@ switches the same way. Do not enable Firestore browser persistence.
 
 All paths below are beneath `users/{uid}`; no parent user document is required.
 
-| Collection/document | Stored data | Trust/access |
-| --- | --- | --- |
-| `packs/{packId}` | LearnerPack v1, contentHash, importedAt | Immutable; server projects it for owner |
-| `packKeys/{packId}` | `{schemaVersion:1, packId, contentHash, keys:{[exerciseId]:answer}}` | Immutable; server grading/review only |
-| `attempts/{attemptId}` | Attempt v1, draft answers, immutable pack/skill metadata, results, lifecycle timestamps | Server-written; owner reads safe DTO |
+| Collection/document    | Stored data                                                                             | Trust/access                            |
+| ---------------------- | --------------------------------------------------------------------------------------- | --------------------------------------- |
+| `packs/{packId}`       | LearnerPack v1, contentHash, importedAt                                                 | Immutable; server projects it for owner |
+| `packKeys/{packId}`    | `{schemaVersion:1, packId, contentHash, keys:{[exerciseId]:answer}}`                    | Immutable; server grading/review only   |
+| `attempts/{attemptId}` | Attempt v1, draft answers, immutable pack/skill metadata, results, lifecycle timestamps | Server-written; owner reads safe DTO    |
 
 No materialized progress counters or teacher snapshot documents in MVP. Compute
 from the latest 100 completed attempts; this avoids retry-induced counter drift.
@@ -133,19 +133,19 @@ before constructing paths. Successful responses are direct DTOs; errors have the
 envelope below. GET detail/list are read-only; no public report token or write API
 for teachers exists.
 
-| Method/path | Input → output / behavior |
-| --- | --- |
-| `POST /api/packs/import` | Full LearningPack; 201 `{packId, contentHash, duplicate:false}`, identical retry 200 with `duplicate:true`, changed same ID 409 |
-| `GET /api/packs` | `limit?, cursor?` → `{items: PackSummary[], nextCursor: string|null}`; summary: id/title/subject/level/exerciseCount/importedAt/contentHash |
-| `GET /api/packs/{packId}` | LearnerPack with contentHash/importedAt; never keys or explanations |
-| `POST /api/attempts` | `{attemptId, packId}` → 201 draft DTO; same ID/pack retry 200 existing DTO; same ID/different pack 409 |
-| `GET /api/attempts` | `packId?, limit?, cursor?` → `{items: AttemptSummary[], nextCursor}` ordered createdAt descending; summary: id/packId/packTitle/status/createdAt/updatedAt/submittedAt/completedAt |
-| `GET /api/attempts/{attemptId}` | Draft DTO without keys, or submitted Review DTO with results and key feedback |
-| `PATCH /api/attempts/{attemptId}` | `{revision, answers}` full draft snapshot → `{revision, updatedAt}`; stale 409; non-draft 409 |
-| `POST /api/attempts/{attemptId}/submit` | `{revision, answers}` complete snapshot → Review DTO; identical committed retry 200; changed submitted answers 409 |
-| `POST /api/attempts/{attemptId}/assessments` | `{ratings}` complete map for self-graded exercise IDs → completed Review DTO; identical retry 200, differing retry 409 |
-| `GET /api/progress` | ProgressSummary v1, latest 100 completed attempts |
-| `GET /api/teacher/context` | TeacherContext v1 for the same window; no side effects |
+| Method/path                                  | Input → output / behavior                                                                                                                                                          |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/packs/import`                     | Full LearningPack; 201 `{packId, contentHash, duplicate:false}`, identical retry 200 with `duplicate:true`, changed same ID 409                                                    |
+| `GET /api/packs`                             | `limit?, cursor?` → `{items: PackSummary[], nextCursor: string                                                                                                                     | null}`; summary: id/title/subject/level/exerciseCount/importedAt/contentHash |
+| `GET /api/packs/{packId}`                    | LearnerPack with contentHash/importedAt; never keys or explanations                                                                                                                |
+| `POST /api/attempts`                         | `{attemptId, packId}` → 201 draft DTO; same ID/pack retry 200 existing DTO; same ID/different pack 409                                                                             |
+| `GET /api/attempts`                          | `packId?, limit?, cursor?` → `{items: AttemptSummary[], nextCursor}` ordered createdAt descending; summary: id/packId/packTitle/status/createdAt/updatedAt/submittedAt/completedAt |
+| `GET /api/attempts/{attemptId}`              | Draft DTO without keys, or submitted Review DTO with results and key feedback                                                                                                      |
+| `PATCH /api/attempts/{attemptId}`            | `{revision, answers}` full draft snapshot → `{revision, updatedAt}`; stale 409; non-draft 409                                                                                      |
+| `POST /api/attempts/{attemptId}/submit`      | `{revision, answers}` complete snapshot → Review DTO; identical committed retry 200; changed submitted answers 409                                                                 |
+| `POST /api/attempts/{attemptId}/assessments` | `{ratings}` complete map for self-graded exercise IDs → completed Review DTO; identical retry 200, differing retry 409                                                             |
+| `GET /api/progress`                          | ProgressSummary v1, latest 100 completed attempts                                                                                                                                  |
+| `GET /api/teacher/context`                   | TeacherContext v1 for the same window; no side effects                                                                                                                             |
 
 Cursor: opaque base64url JSON `{seconds,nanoseconds,id,packId}` containing the
 previous row's exact Firestore timestamp, document ID, and pack filter (null when

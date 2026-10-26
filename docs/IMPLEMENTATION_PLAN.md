@@ -1,24 +1,24 @@
 # Luna 6 execution plan
 
-Status: planning complete; implementation has not started. Run one milestone at a
-time in dependency order. Do not infer completion from a checked box without
-recorded command/browser evidence. Contracts take precedence over incidental
+Status: M1 and M2 implemented; M2 review fixes reverified on 2026-10-27. M3 has
+not started. Run one milestone at a time in dependency order. Do not infer
+completion from a checked box without recorded command/browser evidence. Contracts take precedence over incidental
 starter examples. Read [PRD](PRD.md), [architecture](ARCHITECTURE.md), and
 [content contract](CONTENT_CONTRACT.md) before editing application code.
 
 ## Progress
 
-| Milestone | Status | Evidence/blocker |
-| --- | --- | --- |
-| Planning/handoff | Complete | Six artifacts inspected; example and preservation checks performed during planning |
-| M1 Runnable baseline | Complete | 2026-10-26: added the npm typecheck command, navigable root shell, page placeholders, private/no-store 501 API placeholders, Base UI `render` trigger, app metadata, and npm-only README. `npm ls --depth=0`, `git diff --check`, `npm run lint` (0 errors; one existing unused `app` warning in `src/lib/firebase/client.ts`), `npm run typecheck`, and configured `npm run build` all exit 0. Next's installed docs support Webpack as a builder option; the default Turbopack build was separately attempted and blocked by sandbox port binding, so `build` uses `next build --webpack`. A dev server already occupied localhost:3000; its five required routes returned 200, all three placeholder API methods returned 501 with `Cache-Control: private, no-store` and `Authorization` in `Vary`, and the browser showed the theme menu with no console errors. Starting another dev server was prevented by the occupied port; no tests are installed for M1. M2 may proceed. |
-| M2 Auth and trusted persistence foundation | Complete | 2026-10-26: Firebase Auth/Admin configuration, allowlist and bearer guard, protected shell, guarded API placeholders, bounded empty packs response, emulator config/rules/indexes, and tests implemented. `npm run lint`, `npm run typecheck`, `npm run test:unit` (4/4), `PATH=/tmp/temurin21/bin:$PATH npm run test:emulators` (HTTP 5/5, rules 1/1), `npm run build` (Webpack), `npm ls --depth=0`, and `git diff --check` passed. Dev smoke: six pages returned 200; unauthenticated API calls returned 401 with private/no-store and Authorization Vary headers. Production dependency audit reports 0 vulnerabilities after a narrow grpc override. M3 may proceed. |
-| M3 Validated import | Not started | Depends on M2 |
-| M4 Practice and draft persistence | Not started | Depends on M3 |
-| M5 Grading and durable review | Not started | Depends on M4 |
-| M6 Progress and teacher export | Not started | Depends on M5 |
-| M7 Full-loop verification and release readiness | Not started | Depends on M6; hosted smoke checks need owner configuration |
-| M8 Installability | Deferred | Optional only after M7; no offline sync |
+| Milestone                                       | Status               | Evidence/blocker                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ----------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Planning/handoff                                | Complete             | Six artifacts inspected; example and preservation checks performed during planning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| M1 Runnable baseline                            | Complete             | 2026-10-26: added the npm typecheck command, navigable root shell, page placeholders, private/no-store 501 API placeholders, Base UI `render` trigger, app metadata, and npm-only README. `npm ls --depth=0`, `git diff --check`, `npm run lint` (0 errors; one existing unused `app` warning in `src/lib/firebase/client.ts`), `npm run typecheck`, and configured `npm run build` all exit 0. Next's installed docs support Webpack as a builder option; the default Turbopack build was separately attempted and blocked by sandbox port binding, so `build` uses `next build --webpack`. A dev server already occupied localhost:3000; its five required routes returned 200, all three placeholder API methods returned 501 with `Cache-Control: private, no-store` and `Authorization` in `Vary`, and the browser showed the theme menu with no console errors. Starting another dev server was prevented by the occupied port; no tests are installed for M1. M2 may proceed. |
+| M2 Auth and trusted persistence foundation      | Complete, reverified | 2026-10-27: three review findings fixed; unit 7/7, authenticated HTTP 8/8, rules 3/3 (45 denied operations), lint/typecheck/build/dependency audit passed. System OpenJDK 21.0.12.1 used. Build, emulator tests, and audit required execution outside the sandbox; see current evidence below. M3 may begin but remains unstarted.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| M3 Validated import                             | Not started          | Depends on M2                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| M4 Practice and draft persistence               | Not started          | Depends on M3                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| M5 Grading and durable review                   | Not started          | Depends on M4                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| M6 Progress and teacher export                  | Not started          | Depends on M5                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| M7 Full-loop verification and release readiness | Not started          | Depends on M6; hosted smoke checks need owner configuration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| M8 Installability                               | Deferred             | Optional only after M7; no offline sync                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 Planning audit (2026-10-26): one-off Node assertions validated all example fields,
 limits, references, the five grading variants (three objective/two self-graded),
@@ -32,9 +32,12 @@ exit status, browser cases, and unresolved risks. Keep the next milestone blocke
 until the predecessor's Definition of Done is met. If an external gate blocks M7,
 record it as incomplete; do not label the product release-ready or proceed to M8.
 
-## Verification tooling (planned, not present today)
+## Verification tooling
 
-Currently available: `npm run dev`, `npm run lint`, `npm run build`, `npm start`.
+Current (2026-10-27): all M1/M2 scripts below are installed and verified. Browser
+E2E tooling remains planned for M7. The following describes the original setup
+sequence; its initial baseline scripts were `npm run dev`, `npm run lint`,
+`npm run build`, and `npm start`.
 Do not run an application initializer. Use existing lockfile and strict TypeScript.
 
 M1 adds `typecheck`: `next typegen && tsc --noEmit`. Existing generated `LayoutProps`
@@ -94,18 +97,18 @@ Touch `next.config.ts`/lockfile only if an observed failure requires it.
 **Tasks:**
 
 - [ ] Capture `git status --short` and diff; distinguish preexisting changes from
-  your edits. Confirm `node --version`, `npm --version`, installed Next docs,
-  package/lock consistency. Run `npm ci` only if dependencies need installing.
+      your edits. Confirm `node --version`, `npm --version`, installed Next docs,
+      package/lock consistency. Run `npm ci` only if dependencies need installing.
 - [ ] Add typecheck script; run lint, typecheck, and build to record actual failures.
 - [ ] Give empty page files a minimal default placeholder component; empty API
-  files get explicit 501 JSON responses with private/no-store headers. Keep all
-  APIs unavailable until their authenticated implementation milestone. Avoid
-  inventing feature UI or deleting the route skeleton.
+      files get explicit 501 JSON responses with private/no-store headers. Keep all
+      APIs unavailable until their authenticated implementation milestone. Avoid
+      inventing feature UI or deleting the route skeleton.
 - [ ] Correct Base UI trigger composition (`render`, not Radix `asChild`) and
-  other demonstrated lint/type/build blockers with the smallest changes.
+      other demonstrated lint/type/build blockers with the smallest changes.
 - [ ] Make `/` a navigable shell linking the placeholder learner/import/report
-  routes. Preserve existing UI/theme. Update README to npm-only verified commands,
-  correct `src/app/(learner)` location, and links to these docs; no deployment claims.
+      routes. Preserve existing UI/theme. Update README to npm-only verified commands,
+      correct `src/app/(learner)` location, and links to these docs; no deployment claims.
 
 **Acceptance/verification:** `npm run lint`, `npm run typecheck`, and
 `npm run build` pass. `npm run dev` serves `/`, `/practice`, `/history`, `/import`,
@@ -127,19 +130,19 @@ entries only after confirming they contain no intended tracked project files.
 **Tasks:**
 
 - [x] Add the M2 dependencies/scripts; configure Auth/Firestore emulators with the
-  explicit demo project, loopback ports, deny-all rules, and planned indexes.
+      explicit demo project, loopback ports, deny-all rules, and planned indexes.
 - [x] Implement lazy singleton SDK setup, environment validation, production
-  emulator rejection, and server-only module boundaries. No production credentials
-  are required for builds or demo tests.
+      emulator rejection, and server-only module boundaries. No production credentials
+      are required for builds or demo tests.
 - [x] Implement Google login/logout and session auth state; provide visible
-  sign-in/loading/error states and clear private in-memory data on account changes.
+      sign-in/loading/error states and clear private in-memory data on account changes.
 - [x] Implement shared verified-bearer/allowlist guard, JSON byte limits/error
-  envelope, Origin check, no-store responses, and UID-scoped service entry points.
-  Guard every API placeholder before its 501 response; use GET packs as the first
-  authenticated endpoint returning an empty, bounded list.
+      envelope, Origin check, no-store responses, and UID-scoped service entry points.
+      Guard every API placeholder before its 501 response; use GET packs as the first
+      authenticated endpoint returning an empty, bounded list.
 - [x] Add environment/allowlist unit tests; rules tests denying all client access;
-  HTTP tests for missing/invalid tokens, unapproved user, approved users, wrong
-  project/disabled users where supported, and safe failure without configuration.
+      HTTP tests for missing/invalid tokens, unapproved user, approved users, wrong
+      project/disabled users where supported, and safe failure without configuration.
 
 **Acceptance/verification:** baseline commands, `npm run test:unit` and
 `npm run test:emulators` pass. Anonymous API is 401, valid unlisted UID is 403,
@@ -147,7 +150,7 @@ approved users get their own empty list, client Firestore reads/writes fail, and
 no test touches a real project. Check auth errors cannot leak tokens or SDK details.
 **Definition of Done:** security foundation tests pass before implementing import.
 
-**Execution evidence (2026-10-26):** Added `firebase-admin`, `server-only`,
+**Historical execution evidence (2026-10-26; superseded by revalidation below):** Added `firebase-admin`, `server-only`,
 Vitest 4, Firebase CLI, and rules test tooling; Vitest 5 conflicted with the
 repository's `@types/node` 20 and was not force-installed. Node 24.22.1 is used for
 the app; a Temurin 21 JRE was downloaded and extracted under `/tmp` solely to run
@@ -173,7 +176,81 @@ dependency triage was not done. The dev server logged Next instant-navigation
 validation warnings for protected routes; HTTP behavior passed and those warnings
 were not investigated further. Browser Google sign-in and real-project Admin
 credentials/allowlist remain external checks for later milestones.
-M2's Definition of Done is met; M3 may proceed.
+This was the historical M2 completion decision; see the current review evidence below.
+
+**M2 review corrections and current evidence (2026-10-27):** The starting
+worktree was clean. All three findings were confirmed in the current checkout.
+`src/lib/firebase/client.ts` now initializes asynchronously so synchronous config
+or SDK failures reject the singleton Promise and reach the existing provider catch;
+browser-session persistence and all callers are preserved. `src/components/auth-boundary.tsx`
+now renders a signed-in error with `role="alert"`; failed logout retains the active
+session, successful logout removes private content, and the UID subtree key stays
+intact. `src/app/api/attempts/route.ts` authenticates GET without parsing a body;
+POST retains JSON/media-type/declared and streamed size validation. This M2 fix
+changed no M3 code, dependencies, lockfile, cloud configuration, or production
+credentials. A concurrent Prettier 3.9.10 dev-dependency addition in package.json
+and package-lock.json was observed at final review and preserved; npm ls was
+rechecked successfully with that addition.
+
+Regression evidence:
+
+- `tests/unit/auth-client.test.tsx`: three new tests using installed Vitest and
+  React DOM server rendering, with a small effect/state driver and mocked Firebase
+  SDK/button. Empty public config ends loading with a safe alert and never creates
+  a Firebase app; initialization is singleton and waits for session persistence;
+  failed logout shows an alert while retaining private UI, UID changes alter the
+  boundary key, and successful logout removes private UI. This is component/state
+  regression coverage, not a browser DOM lifecycle or real Google login test.
+- `tests/integration/auth-api.test.ts`: three new HTTP cases (GET/POST media type,
+  foreign `aud`, foreign `iss`) retain the five prior cases. GET without auth is
+  401; valid body-free GET is 501 NOT_IMPLEMENTED. POST without JSON media type is
+  415, malformed JSON 400, and declared/streamed oversize bodies 413. GET/errors
+  keep private/no-store and Authorization Vary headers. Foreign-project claim
+  checks return redacted 401 under valid server config, separate from the retained
+  server-project-mismatch 503 test. Tokens are unsigned emulator tokens derived
+  in memory by changing one project claim; no second project was accessed. This
+  does not validate signed token issuance by another real Firebase project.
+- `tests/rules/firestore-rules.test.ts`: three collection cases cover `packs`,
+  `packKeys`, and `attempts`. Anonymous, owner, and cross-UID clients are each
+  denied get/list/create/update/delete (45 denied operations). Existing documents
+  are seeded so update/delete failures exercise rules rather than absent data.
+  Rules remain deny-all; demo/loopback guards precede access and fixture cleanup.
+- The HTTP harness now copies app/config files into a fresh temporary directory
+  (without local env files) and links installed dependencies. Its port-3100 Next
+  server stops and the directory is removed at teardown. This avoids the observed
+  `.next/dev` lock conflict with the user's existing port-3000 server.
+- Two approved empty pack lists prove access to the bounded placeholder only.
+  They do **not** prove persistence isolation. Distinct stored data per UID and
+  server-side ownership isolation remain M3 acceptance work.
+
+| Command                  | Current result               | Evidence / environment                                                                         |
+| ------------------------ | ---------------------------- | ---------------------------------------------------------------------------------------------- |
+| `java -version`          | PASS, exit 0                 | System OpenJDK 21.0.12.1; no temporary JRE downloaded/used                                     |
+| `npm ls --depth=0`       | PASS, exit 0                 | Installed dependencies consistent; Node 24.22.1/npm 11.19.1                                    |
+| `git diff --check`       | PASS, exit 0                 | Final patch whitespace check                                                                   |
+| `npm run lint`           | PASS, exit 0                 | No diagnostics                                                                                 |
+| `npm run typecheck`      | PASS, exit 0                 | Next typegen and TypeScript, including the new tests                                           |
+| `npm run test:unit`      | PASS, exit 0                 | 7/7 tests across two files (four config + three auth regressions)                              |
+| `npm run test:emulators` | PASS, exit 0 outside sandbox | HTTP 8/8 + rules 3/3; only demo-learning-pwa and configured loopback emulators; clean shutdown |
+| `npm run build`          | PASS, exit 0 outside sandbox | Normal workspace Webpack build, including TypeScript and prerender generation                  |
+| `npm audit --omit=dev`   | PASS, exit 0 outside sandbox | 0 vulnerabilities                                                                              |
+
+Initial failures were investigated rather than suppressed: sandbox emulator startup
+failed to bind loopback ports (EPERM); the first unrestricted run then found the
+shared Next dev lock, fixed through harness isolation. The normal workspace build
+reproduced “Could not parse output from TypeScript's --showConfig.” Direct tsc
+showConfig succeeded; the installed Next CLI helper captured empty stdout in the
+sandbox. The identical normal build outside the sandbox passed, so no TypeScript
+or Next configuration was changed. Audit initially failed with registry DNS
+ENOTFOUND inside the sandbox and passed outside it. The initial temporary JRE
+request was interrupted; the subsequently installed system Java was used instead.
+
+The final diff was inspected for unintended changes and credential/token exposure;
+no credentials or tokens were added. No mandatory M2 gate remains blocked.
+M2's Definition of Done is met on this evidence; M3 is eligible but **not started**.
+Real Google popup/session behavior, browser remount/back-navigation privacy,
+production token signatures/revocation, and production configuration remain later
+external/browser checks; no production-readiness claim is made.
 
 **External gate (later, not during planning):** owner must create/configure Firebase
 project, Google provider, Web app/domains, Firestore location, service-account
@@ -190,17 +267,17 @@ UI, `/api/packs/import`, pack list/detail routes, example-based fixtures/tests.
 **Tasks:**
 
 - [ ] Implement all v1 fields, discriminated unions, cross-references, limits,
-  explicit version rejection, and canonical hashing from CONTENT_CONTRACT.
+      explicit version rejection, and canonical hashing from CONTENT_CONTRACT.
 - [ ] Implement JSON file/paste input and one shared preview; errors identify
-  fields without echoing untrusted values as HTML. Confirm/cancel before writes.
+      fields without echoing untrusted values as HTML. Confirm/cancel before writes.
 - [ ] Atomically persist projected learner pack and separate keys. Enforce same
-  ID/hash duplicate and changed-ID-content conflict policy; discard raw import
-  state on success/cancel. Implement bounded lists and cursor validation.
+      ID/hash duplicate and changed-ID-content conflict policy; discard raw import
+      state on success/cancel. Implement bounded lists and cursor validation.
 - [ ] Test real example, non-Japanese fixture, malformed JSON, depth/size including
-  chunked bodies, invalid versions/IDs/references/choices, unknown nested fields,
-  unsupported exercise types, normalized duplicate answers, and adversarial strings.
+      chunked bodies, invalid versions/IDs/references/choices, unknown nested fields,
+      unsupported exercise types, normalized duplicate answers, and adversarial strings.
 - [ ] Test two concurrent imports, whitespace/key-order equivalence, hash-changing
-  content conflict, isolation, atomic failure, and positive-list key redaction.
+      content conflict, isolation, atomic failure, and positive-list key redaction.
 
 **Acceptance/verification:** baseline + unit + emulator suites pass. Both input
 paths import the same example; cancel/invalid input writes nothing; duplicate
@@ -218,15 +295,15 @@ session/renderer UI and persistence; learner practice/history pages;
 **Tasks:**
 
 - [ ] Render choice, one-blank, exact/self short-answer, and self-review inputs
-  with associated labels, keyboard navigation, focus/error states, and plain text.
+      with associated labels, keyboard navigation, focus/error states, and plain text.
 - [ ] Start UUID-based attempts idempotently; persist partial answer snapshots
-  with revisions. Serialize autosaves, show saved/saving/failed status, provide
-  explicit Save, and warn before leaving with unsaved work.
+      with revisions. Serialize autosaves, show saved/saving/failed status, provide
+      explicit Save, and warn before leaving with unsaved work.
 - [ ] Implement resume/history with pagination and optional pack filter. Refetch
-  on stale revision and preserve recoverable local text; do not auto-overwrite.
+      on stale revision and preserve recoverable local text; do not auto-overwrite.
 - [ ] Test wrong answer shapes/unknown exercise IDs, repeated start, same UUID
-  wrong pack, two-tab stale saves, account switching, lost-response retry recovery,
-  and attempts belonging to another UID. Submit remains unavailable until M5.
+      wrong pack, two-tab stale saves, account switching, lost-response retry recovery,
+      and attempts belonging to another UID. Submit remains unavailable until M5.
 
 **Acceptance/verification:** baseline/unit/emulator suites; browser answers all
 five example variants, acknowledges Save, reloads/resumes exact saved choices/text;
@@ -243,15 +320,15 @@ submit/assessments routes, results UI, history detail page, test fixtures.
 **Tasks:**
 
 - [ ] Implement documented normalization and objective grading; no fuzzy/AI grading.
-  Unit cases include NFKC full-width text, whitespace, case, punctuation mismatch,
-  missing answers, and multiple accepted answers.
+      Unit cases include NFKC full-width text, whitespace, case, punctuation mismatch,
+      missing answers, and multiple accepted answers.
 - [ ] Validate/freeze complete answers and compute results transactionally.
-  Introduce objective-only completion and awaiting_self_review → completed states.
+      Introduce objective-only completion and awaiting_self_review → completed states.
 - [ ] Reveal feedback only for submitted attempts; collect all self ratings once.
-  Serialize saves before submit, retain latest revision, and surface conflicts.
+      Serialize saves before submit, retain latest revision, and surface conflicts.
 - [ ] Test concurrent/retried submit and assessment, different retry payloads,
-  malformed ratings, stale revision, no edits after completion, and key/score/UID
-  injection. Grade results must come from stored keys, never the client.
+      malformed ratings, stale revision, no edits after completion, and key/score/UID
+      injection. Grade results must come from stored keys, never the client.
 
 **Acceptance/verification:** baseline/unit/emulator suites pass. Example produces
 three objective outcomes and two pending self ratings; after rating, all five
@@ -269,15 +346,15 @@ progress and existing teacher/context route, unit/integration tests.
 **Tasks:**
 
 - [ ] Aggregate exactly the documented latest-100 completed window, separating
-  objective counts/accuracy from self ratings, with stable subject/skill IDs.
+      objective counts/accuracy from self ratings, with stable subject/skill IDs.
 - [ ] Build TeacherContext v1 from the same query; add at most 20 completed-work
-  mistake samples, truncation markers, and static nextPackConstraints. No identity
-  credentials, drafts, raw input instructions, or public sharing token.
+      mistake samples, truncation markers, and static nextPackConstraints. No identity
+      credentials, drafts, raw input instructions, or public sharing token.
 - [ ] Render owner-only report data after auth; add copy and JSON download via
-  platform APIs. Label window, truncation, untrusted content, and manual handoff.
+      platform APIs. Label window, truncation, untrusted content, and manual handoff.
 - [ ] Test zero data, all-self data, mixed subjects, multi-skill counting, repeated
-  attempts, label changes, 101+ completions, timestamp ties, incomplete sessions,
-  truncation, two-user isolation, and exact report-schema validation.
+      attempts, label changes, 101+ completions, timestamp ties, incomplete sessions,
+      truncation, two-user isolation, and exact report-schema validation.
 
 **Acceptance/verification:** baseline/unit/emulator suites; report/progress counters
 match fixtures; GET report makes no Firestore writes; 401/403/404 ownership behavior
@@ -297,21 +374,21 @@ README operational setup, this plan's evidence/status. No new product capabiliti
 **Tasks:**
 
 - [ ] Add the browser tooling described above; test file upload and paste, errors,
-  confirmation, duplicates, all renderers, saved resume, grading, self-review,
-  history, progress, and report copy/download. Run keyboard/mobile-width checks.
+      confirmation, duplicates, all renderers, saved resume, grading, self-review,
+      history, progress, and report copy/download. Run keyboard/mobile-width checks.
 - [ ] Browser/network tests prove practice/draft/RSC payloads and preloaded data
-  contain no keys, untrusted text cannot execute, auth switch clears data, and a
-  second UID cannot read/write the first user's resources. Verify report HTML,
-  JSON, error responses, and browser back/sign-out behavior do not expose cached
-  data. Admin credentials and example answer fixtures must not enter client bundles;
-  public Firebase Web configuration is expected there.
+      contain no keys, untrusted text cannot execute, auth switch clears data, and a
+      second UID cannot read/write the first user's resources. Verify report HTML,
+      JSON, error responses, and browser back/sign-out behavior do not expose cached
+      data. Admin credentials and example answer fixtures must not enter client bundles;
+      public Firebase Web configuration is expected there.
 - [ ] CI runs npm ci, lint, typecheck, unit tests, emulator integration/rules,
-  build, and the small browser loop using supported Node/Java versions. Use no
-  real credentials in CI. Include emulator binaries/browser availability explicitly.
+      build, and the small browser loop using supported Node/Java versions. Use no
+      real credentials in CI. Include emulator binaries/browser availability explicitly.
 - [ ] Prepare owner setup/release checklist: separate Vercel env scopes, Google
-  domains, allowlist, Firestore rules/indexes, secret handling, index query smoke
-  checks, real token revocation/disabled-user behavior, HTTPS/no-store headers.
-  No deployment or resource provisioning without a later explicit request.
+      domains, allowlist, Firestore rules/indexes, secret handling, index query smoke
+      checks, real token revocation/disabled-user behavior, HTTPS/no-store headers.
+      No deployment or resource provisioning without a later explicit request.
 
 **Acceptance/verification:** all baseline scripts + `npm run test:unit`,
 `npm run test:emulators`, `npm run test:e2e:emulators` pass; full loop uses no OpenAI

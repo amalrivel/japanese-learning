@@ -39,34 +39,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .catch((reason: unknown) => {
         if (active) {
           setLoading(false);
-          setError(reason instanceof ConfigurationError ? reason.message : "Firebase sign-in is unavailable.");
+          setError(
+            reason instanceof ConfigurationError
+              ? reason.message
+              : "Firebase sign-in is unavailable.",
+          );
         }
       });
-    return () => { active = false; unsubscribe(); };
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
 
-  const value = useMemo<AuthState>(() => ({
-    user,
-    loading,
-    error,
-    async signIn() {
-      setError(null);
-      try {
-        const auth = await getFirebaseAuth();
-        await signInWithPopup(auth, new GoogleAuthProvider());
-      } catch (reason) {
-        setError(reason instanceof ConfigurationError ? reason.message : "Google sign-in failed. Try again.");
-      }
-    },
-    async signOutUser() {
-      setError(null);
-      try {
-        await signOut(await getFirebaseAuth());
-      } catch {
-        setError("Sign-out failed. Try again.");
-      }
-    },
-  }), [user, loading, error]);
+  const value = useMemo<AuthState>(
+    () => ({
+      user,
+      loading,
+      error,
+      async signIn() {
+        setError(null);
+        try {
+          const auth = await getFirebaseAuth();
+          await signInWithPopup(auth, new GoogleAuthProvider());
+        } catch (reason) {
+          setError(
+            reason instanceof ConfigurationError
+              ? reason.message
+              : "Google sign-in failed. Try again.",
+          );
+        }
+      },
+      async signOutUser() {
+        setError(null);
+        try {
+          await signOut(await getFirebaseAuth());
+        } catch {
+          setError("Sign-out failed. Try again.");
+        }
+      },
+    }),
+    [user, loading, error],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
