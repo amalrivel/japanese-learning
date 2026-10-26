@@ -1,3 +1,10 @@
-export function GET() {
-  return Response.json({ error: { code: "NOT_IMPLEMENTED", message: "This endpoint is not available yet." } }, { status: 501, headers: { "Cache-Control": "private, no-store", Vary: "Authorization" } });
+import { apiError, methodNotAllowed, withAuthenticatedUser } from "@/lib/api/server";
+
+export function GET(request: Request) {
+  return withAuthenticatedUser(request, () => apiError(501, "NOT_IMPLEMENTED", "This endpoint is not available yet."));
 }
+
+export function POST() { return methodNotAllowed(); }
+export function PUT() { return methodNotAllowed(); }
+export function PATCH() { return methodNotAllowed(); }
+export function DELETE() { return methodNotAllowed(); }

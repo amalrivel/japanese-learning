@@ -1,0 +1,29 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "attempts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "completedAt", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "attempts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "packId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    { "collectionGroup": "packs", "fieldPath": "exercises", "indexes": [] },
+    { "collectionGroup": "packKeys", "fieldPath": "keys", "indexes": [] },
+    { "collectionGroup": "attempts", "fieldPath": "answers", "indexes": [] },
+    { "collectionGroup": "attempts", "fieldPath": "results", "indexes": [] },
+    { "collectionGroup": "attempts", "fieldPath": "skills", "indexes": [] }
+  ]
+}

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AuthBoundary } from "@/components/auth-boundary";
 
 
 export const metadata: Metadata = {
@@ -8,7 +9,6 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <>
-    {children}</>
+    <AuthBoundary>{children}</AuthBoundary>
   );
 }

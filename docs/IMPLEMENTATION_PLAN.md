@@ -12,7 +12,7 @@ starter examples. Read [PRD](PRD.md), [architecture](ARCHITECTURE.md), and
 | --- | --- | --- |
 | Planning/handoff | Complete | Six artifacts inspected; example and preservation checks performed during planning |
 | M1 Runnable baseline | Complete | 2026-10-26: added the npm typecheck command, navigable root shell, page placeholders, private/no-store 501 API placeholders, Base UI `render` trigger, app metadata, and npm-only README. `npm ls --depth=0`, `git diff --check`, `npm run lint` (0 errors; one existing unused `app` warning in `src/lib/firebase/client.ts`), `npm run typecheck`, and configured `npm run build` all exit 0. Next's installed docs support Webpack as a builder option; the default Turbopack build was separately attempted and blocked by sandbox port binding, so `build` uses `next build --webpack`. A dev server already occupied localhost:3000; its five required routes returned 200, all three placeholder API methods returned 501 with `Cache-Control: private, no-store` and `Authorization` in `Vary`, and the browser showed the theme menu with no console errors. Starting another dev server was prevented by the occupied port; no tests are installed for M1. M2 may proceed. |
-| M2 Auth and trusted persistence foundation | Not started | Depends on M1; emulator tooling required |
+| M2 Auth and trusted persistence foundation | Complete | 2026-10-26: Firebase Auth/Admin configuration, allowlist and bearer guard, protected shell, guarded API placeholders, bounded empty packs response, emulator config/rules/indexes, and tests implemented. `npm run lint`, `npm run typecheck`, `npm run test:unit` (4/4), `PATH=/tmp/temurin21/bin:$PATH npm run test:emulators` (HTTP 5/5, rules 1/1), `npm run build` (Webpack), `npm ls --depth=0`, and `git diff --check` passed. Dev smoke: six pages returned 200; unauthenticated API calls returned 401 with private/no-store and Authorization Vary headers. Production dependency audit reports 0 vulnerabilities after a narrow grpc override. M3 may proceed. |
 | M3 Validated import | Not started | Depends on M2 |
 | M4 Practice and draft persistence | Not started | Depends on M3 |
 | M5 Grading and durable review | Not started | Depends on M4 |
@@ -126,18 +126,18 @@ entries only after confirming they contain no intended tracked project files.
 
 **Tasks:**
 
-- [ ] Add the M2 dependencies/scripts; configure Auth/Firestore emulators with the
+- [x] Add the M2 dependencies/scripts; configure Auth/Firestore emulators with the
   explicit demo project, loopback ports, deny-all rules, and planned indexes.
-- [ ] Implement lazy singleton SDK setup, environment validation, production
+- [x] Implement lazy singleton SDK setup, environment validation, production
   emulator rejection, and server-only module boundaries. No production credentials
   are required for builds or demo tests.
-- [ ] Implement Google login/logout and session auth state; provide visible
+- [x] Implement Google login/logout and session auth state; provide visible
   sign-in/loading/error states and clear private in-memory data on account changes.
-- [ ] Implement shared verified-bearer/allowlist guard, JSON byte limits/error
+- [x] Implement shared verified-bearer/allowlist guard, JSON byte limits/error
   envelope, Origin check, no-store responses, and UID-scoped service entry points.
   Guard every API placeholder before its 501 response; use GET packs as the first
   authenticated endpoint returning an empty, bounded list.
-- [ ] Add environment/allowlist unit tests; rules tests denying all client access;
+- [x] Add environment/allowlist unit tests; rules tests denying all client access;
   HTTP tests for missing/invalid tokens, unapproved user, approved users, wrong
   project/disabled users where supported, and safe failure without configuration.
 
@@ -146,6 +146,34 @@ entries only after confirming they contain no intended tracked project files.
 approved users get their own empty list, client Firestore reads/writes fail, and
 no test touches a real project. Check auth errors cannot leak tokens or SDK details.
 **Definition of Done:** security foundation tests pass before implementing import.
+
+**Execution evidence (2026-10-26):** Added `firebase-admin`, `server-only`,
+Vitest 4, Firebase CLI, and rules test tooling; Vitest 5 conflicted with the
+repository's `@types/node` 20 and was not force-installed. Node 24.22.1 is used for
+the app; a Temurin 21 JRE was downloaded and extracted under `/tmp` solely to run
+the Firestore emulator. The supplied Firebase Web config is stored only in ignored
+`.env.local`; no Admin credential or production UID allowlist was added.
+
+`npm run lint`, `npm run typecheck`, `npm run test:unit` (4/4),
+`PATH=/tmp/temurin21/bin:$PATH npm run test:emulators` (authenticated HTTP 5/5,
+Firestore rules 1/1), `npm run build` (Webpack), `npm ls --depth=0`, and
+`git diff --check` passed. HTTP cases cover missing/invalid tokens, unapproved and
+approved users, disabled allowlisted account rejection, project misconfiguration,
+cross-origin mutation, placeholder guards, error redaction, and declared/streamed
+body limits. Firestore reads/writes fail for both authenticated and anonymous
+clients. Tests used only `demo-learning-pwa`; emulator shutdown succeeded.
+
+Local dev smoke: `/`, `/practice`, `/history`, `/import`, `/teacher/report`, and
+`/sign-in` returned 200; unauthenticated API requests returned 401 with
+`Cache-Control: private, no-store` and `Vary: Authorization`. `npm audit
+--omit=dev` reports 0 vulnerabilities after overriding the vulnerable Firebase
+Web Firestore transitive `@grpc/grpc-js` 1.9.16 with 1.14.6. The full install audit
+still reports 5 moderate findings in the overall dependency tree; detailed dev
+dependency triage was not done. The dev server logged Next instant-navigation
+validation warnings for protected routes; HTTP behavior passed and those warnings
+were not investigated further. Browser Google sign-in and real-project Admin
+credentials/allowlist remain external checks for later milestones.
+M2's Definition of Done is met; M3 may proceed.
 
 **External gate (later, not during planning):** owner must create/configure Firebase
 project, Google provider, Web app/domains, Firestore location, service-account

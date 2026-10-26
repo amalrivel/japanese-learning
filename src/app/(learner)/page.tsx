@@ -7,6 +7,9 @@ const routes = [
   ["Teacher report", "/teacher/report"],
 ] as const;
 
+// AuthBoundary waits for browser sign-in before rendering this page.
+export const instant = false;
+
 export default function Home() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-16">
