@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "id": "jlpt-n3-20261026-01",
+  "title": "N3 practice: contrast, preparation, and daily habits",
+  "subject": { "id": "japanese", "label": "Japanese" },
+  "level": "JLPT N3",
+  "contentLanguage": "ja",
+  "feedbackLanguage": "en",
+  "createdAt": "2026-10-26T00:00:00.000Z",
+  "skills": [
+    { "id": "grammar.contrast", "label": "Unexpected contrast with のに" },
+    { "id": "grammar.preparation", "label": "Advance preparation with ておく" },
+    { "id": "vocabulary.reading", "label": "Common kanji readings" },
+    { "id": "grammar.habit", "label": "Intentional habits with ようにしている" }
+  ],
+  "exercises": [
+    {
+      "id": "noni-choice",
+      "type": "multiple_choice",
+      "skillIds": ["grammar.contrast"],
+      "prompt": "Choose the expression showing an unexpected contrast: 雨が降っている＿＿、彼は傘を持っていません。",
+      "choices": [
+        { "id": "noni", "text": "のに" },
+        { "id": "node", "text": "ので" },
+        { "id": "tame", "text": "ために" }
+      ],
+      "answer": {
+        "choiceId": "noni",
+        "explanation": "のに marks an unexpected contrast: although it is raining, he does not have an umbrella."
+      }
+    },
+    {
+      "id": "prepare-blank",
+      "type": "fill_blank",
+      "skillIds": ["grammar.preparation"],
+      "prompt": "Use the polite form of ておく to express preparation: 日本へ行く前に、少し日本語を勉強して{{blank}}。",
+      "answer": {
+        "acceptedAnswers": ["おきます"],
+        "explanation": "勉強しておきます means studying in advance to prepare for a later situation."
+      }
+    },
+    {
+      "id": "reading-short",
+      "type": "short_answer",
+      "grading": "exact",
+      "skillIds": ["vocabulary.reading"],
+      "prompt": "Write the reading of 約束 in hiragana only.",
+      "answer": {
+        "acceptedAnswers": ["やくそく"],
+        "explanation": "約束 is read やくそく and means a promise or an arrangement."
+      }
+    },
+    {
+      "id": "habit-short",
+      "type": "short_answer",
+      "grading": "self",
+      "skillIds": ["grammar.habit"],
+      "prompt": "Write one sentence about a habit you try to maintain, using 〜ようにしています。",
+      "answer": {
+        "modelAnswer": "毎日、日本語を読むようにしています。",
+        "rubric": [
+          "Describe an intentional, repeated habit.",
+          "Use a dictionary-form or ない-form verb followed by ようにしています."
+        ],
+        "explanation": "Many answers are valid. Compare your sentence with the rubric rather than matching the example word for word."
+      }
+    },
+    {
+      "id": "contrast-review",
+      "type": "self_review",
+      "skillIds": ["grammar.contrast"],
+      "prompt": "Explain in your own words how のに differs from ので. You may answer in English or Japanese.",
+      "answer": {
+        "modelAnswer": "のに connects an expectation with a surprising result. ので gives a reason for the following statement.",
+        "rubric": [
+          "Identify unexpected contrast as the role of のに.",
+          "Identify reason or cause as the role of ので."
+        ],
+        "explanation": "A reason and a surprising contrast express different relationships, even when both connect two clauses."
+      }
+    }
+  ]
+}
