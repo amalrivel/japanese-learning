@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { spawn, type ChildProcess } from "node:child_process";
 import { cp, mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -176,7 +178,7 @@ describe("authenticated API boundary", () => {
     const invalidLimit = await fetch("http://127.0.0.1:3100/api/packs?limit=51", {
       headers: { Authorization: `Bearer ${tokens[0]}` },
     });
-    expect(invalidLimit.status).toBe(400);
+    expect(invalidLimit.status).toBe(422);
 
     const post = { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" };
     const anonymousPlaceholder = await fetch("http://127.0.0.1:3100/api/attempts", { ...post });
@@ -291,6 +293,184 @@ describe("authenticated API boundary", () => {
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(await response.text()).not.toContain(tokens[3]);
   });
+
+  it("imports atomically, isolates users, preserves retries and redacts keys", async () => {
+    assertDemoEmulators();
+    const fixture = JSON.parse(readFileSync("examples/learning-pack.v1.json", "utf8"));
+    const url = "http://127.0.0.1:3100/api/packs";
+    const headers = (index: number) => ({
+      Authorization: `Bearer ${tokens[index]}`,
+      "Content-Type": "application/json",
+    });
+    const post = (index: number, body: string) =>
+      fetch(`${url}/import`, { method: "POST", headers: headers(index), body });
+    const raw = JSON.stringify(fixture);
+    const browserOrigin = await fetch(`${url}/import`, {
+      method: "POST",
+      headers: { ...headers(0), Origin: "http://127.0.0.1:3100" },
+      body: "{",
+    });
+    expect(browserOrigin.status).toBe(400); // Same-origin request reaches JSON validation.
+    const crossOrigin = await fetch(`${url}/import`, {
+      method: "POST",
+      headers: { ...headers(0), Origin: "http://attacker.test" },
+      body: raw,
+    });
+    expect(crossOrigin.status).toBe(403);
+    const [a, b] = await Promise.all([post(0, raw), post(0, raw)]);
+    expect([a.status, b.status].sort()).toEqual([200, 201]);
+    const db = getFirestore(adminApp);
+    const root = db.collection("users").doc(users[0].uid);
+    const packRef = root.collection("packs").doc(fixture.id);
+    const keyRef = root.collection("packKeys").doc(fixture.id);
+    const first = await packRef.get();
+    const key = await keyRef.get();
+    expect(first.exists && key.exists).toBe(true);
+    expect(first.get("contentHash")).toBe(key.get("contentHash"));
+    const padded = raw + " ".repeat(128 * 1024 - Buffer.byteLength(raw));
+    expect((await post(0, padded)).status).toBe(200);
+    expect((await post(0, padded + " ")).status).toBe(413);
+    const reversed = Object.fromEntries(Object.entries(fixture).reverse());
+    expect((await post(0, JSON.stringify(reversed))).status).toBe(200);
+    const retry = await post(0, JSON.stringify(fixture, null, 2));
+    expect(retry.status).toBe(200);
+    expect((await retry.json()).duplicate).toBe(true);
+    expect((await packRef.get()).get("importedAt").isEqual(first.get("importedAt"))).toBe(true);
+    const changed = structuredClone(fixture);
+    changed.title = "Different";
+    expect((await post(0, JSON.stringify(changed))).status).toBe(409);
+    expect((await post(1, JSON.stringify(changed))).status).toBe(201);
+    const detail = await fetch(`${url}/${fixture.id}`, { headers: headers(0) });
+    expect(detail.status).toBe(200);
+    const text = await detail.text();
+    expect(text).not.toMatch(
+      /"(?:answer|explanation|acceptedAnswers|modelAnswer|rubric|choiceId)":/,
+    );
+    expect(
+      (await (await fetch(`${url}/${fixture.id}`, { headers: headers(1) })).json()).title,
+    ).toBe("Different");
+    const onlyA = structuredClone(fixture);
+    onlyA.id = "only-a";
+    expect((await post(0, JSON.stringify(onlyA))).status).toBe(201);
+    expect((await fetch(`${url}/only-a`, { headers: headers(1) })).status).toBe(404);
+    const page1 = await (await fetch(`${url}?limit=1`, { headers: headers(0) })).json();
+    expect(page1.items).toHaveLength(1);
+    expect(page1.nextCursor).toBeTruthy();
+    const page2 = await (
+      await fetch(`${url}?limit=1&cursor=${page1.nextCursor}`, { headers: headers(0) })
+    ).json();
+    expect(page2.items).toHaveLength(1);
+    expect(page2.items[0].id).not.toBe(page1.items[0].id);
+    expect(JSON.stringify([page1, page2])).not.toMatch(/"(?:answer|explanation|rubric|choiceId)":/);
+    expect((await fetch(`${url}?cursor=invalid`, { headers: headers(0) })).status).toBe(422);
+    const wrongFilter = Buffer.from(
+      JSON.stringify({ seconds: 0, nanoseconds: 0, id: "valid", packId: "other" }),
+    ).toString("base64url");
+    expect((await fetch(`${url}?cursor=${wrongFilter}`, { headers: headers(0) })).status).toBe(422);
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(" ".repeat(128 * 1024 + 1)));
+        controller.close();
+      },
+    });
+    expect(
+      (
+        await fetch(`${url}/import`, {
+          method: "POST",
+          headers: headers(0),
+          body: stream,
+          duplex: "half",
+        } as RequestInit & { duplex: "half" })
+      ).status,
+    ).toBe(413);
+    expect((await post(0, "{")).status).toBe(400);
+    expect(
+      (
+        await fetch(`${url}/import`, {
+          method: "POST",
+          headers: headers(0),
+          body: new Uint8Array([0xff]),
+        })
+      ).status,
+    ).toBe(400);
+    // A near-limit valid body exercises the actual emulator writes and document budgets.
+    const large = {
+      ...fixture,
+      id: "large-pack",
+      skills: Array.from({ length: 20 }, (_, i) => ({ id: `skill.${i}`, label: `Skill ${i}` })),
+      exercises: Array.from({ length: 40 }, (_, i) => ({
+        id: `exercise-${i}`,
+        type: "self_review",
+        skillIds: [`skill.${i % 20}`],
+        prompt: "p".repeat(1800),
+        answer: {
+          modelAnswer: "m".repeat(600),
+          rubric: ["r".repeat(100)],
+          explanation: "e".repeat(500),
+        },
+      })),
+    };
+    const largeBody = JSON.stringify(large);
+    expect(Buffer.byteLength(largeBody)).toBeGreaterThan(120 * 1024);
+    expect(Buffer.byteLength(largeBody)).toBeLessThanOrEqual(128 * 1024);
+    expect((await post(0, largeBody)).status).toBe(201);
+    const largePack = await root.collection("packs").doc(large.id).get();
+    const largeKeys = await root.collection("packKeys").doc(large.id).get();
+    expect(Buffer.byteLength(JSON.stringify(largePack.data()))).toBeLessThanOrEqual(512 * 1024);
+    expect(Buffer.byteLength(JSON.stringify(largeKeys.data()))).toBeLessThanOrEqual(512 * 1024);
+    // Force identical timestamps and sub-millisecond differences to verify both ordering components.
+    const seed = first.data()!;
+    for (const [id, nanos] of [
+      ["order-a", 123456000],
+      ["order-b", 123456000],
+      ["order-c", 123455000],
+    ] as const) {
+      await root
+        .collection("packs")
+        .doc(id)
+        .create({ ...seed, id, importedAt: new Timestamp(253402300000, nanos) });
+    }
+    let cursor = "";
+    const ordered: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const page = await (
+        await fetch(`${url}?limit=1${cursor ? `&cursor=${cursor}` : ""}`, { headers: headers(0) })
+      ).json();
+      ordered.push(page.items[0].id);
+      cursor = page.nextCursor;
+      if (i === 0)
+        expect(JSON.parse(Buffer.from(cursor, "base64url").toString()).nanoseconds).toBe(123456000);
+    }
+    expect(ordered).toEqual(["order-b", "order-a", "order-c"]);
+    const rollbackPack = root.collection("packs").doc("rollback");
+    const rollbackKey = root.collection("packKeys").doc("rollback");
+    await expect(
+      db.runTransaction(async (tx) => {
+        tx.create(rollbackPack, { id: "rollback" });
+        tx.create(rollbackKey, { packId: "rollback" });
+        throw new Error("simulated transaction failure");
+      }),
+    ).rejects.toThrow("simulated transaction failure");
+    expect((await rollbackPack.get()).exists).toBe(false);
+    expect((await rollbackKey.get()).exists).toBe(false);
+    const invalid = structuredClone(fixture);
+    invalid.id = "invalid";
+    invalid.subject.extra = true;
+    expect((await post(0, JSON.stringify(invalid))).status).toBe(422);
+    expect((await root.collection("packs").doc("invalid").get()).exists).toBe(false);
+    const orphan = structuredClone(fixture);
+    orphan.id = "orphan";
+    await root.collection("packKeys").doc("orphan").create({ contentHash: "bad" });
+    expect((await post(0, JSON.stringify(orphan))).status).toBe(500);
+    expect((await root.collection("packs").doc("orphan").get()).exists).toBe(false);
+    const orphanPack = structuredClone(fixture);
+    orphanPack.id = "orphan-pack";
+    await root.collection("packs").doc("orphan-pack").create({ contentHash: "bad" });
+    expect((await post(0, JSON.stringify(orphanPack))).status).toBe(500);
+    expect((await root.collection("packKeys").doc("orphan-pack").get()).exists).toBe(false);
+    for (const uid of users.slice(0, 2).map((u) => u.uid))
+      await db.recursiveDelete(db.collection("users").doc(uid));
+  }, 30000);
 
   it("fails safely when the server Firebase project is misconfigured", async () => {
     await stopServer();

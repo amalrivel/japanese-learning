@@ -47,7 +47,13 @@ export function checkSameOrigin(request: Request) {
   const origin = request.headers.get("origin");
   if (!origin) return true;
   try {
-    return new URL(origin).origin === new URL(request.url).origin;
+    const requestUrl = new URL(request.url);
+    const host = request.headers.get("host");
+    if (!host || /[\s/@\\?#]/.test(host)) return false;
+    return (
+      origin === new URL(origin).origin &&
+      origin === new URL(`${requestUrl.protocol}//${host}`).origin
+    );
   } catch {
     return false;
   }

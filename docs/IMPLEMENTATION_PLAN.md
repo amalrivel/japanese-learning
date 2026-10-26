@@ -1,8 +1,8 @@
 # Luna 6 execution plan
 
-Status: M1 and M2 implemented; M2 review fixes reverified on 2026-10-27. M3 has
-not started. Run one milestone at a time in dependency order. Do not infer
-completion from a checked box without recorded command/browser evidence. Contracts take precedence over incidental
+Status: M1, M2, and M3 implemented and verified on 2026-10-27. M4 has not
+started. Run one milestone at a time in dependency order. Do not infer completion
+from a checked box without recorded command/browser evidence. Contracts take precedence over incidental
 starter examples. Read [PRD](PRD.md), [architecture](ARCHITECTURE.md), and
 [content contract](CONTENT_CONTRACT.md) before editing application code.
 
@@ -12,8 +12,8 @@ starter examples. Read [PRD](PRD.md), [architecture](ARCHITECTURE.md), and
 | ----------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Planning/handoff                                | Complete             | Six artifacts inspected; example and preservation checks performed during planning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | M1 Runnable baseline                            | Complete             | 2026-10-26: added the npm typecheck command, navigable root shell, page placeholders, private/no-store 501 API placeholders, Base UI `render` trigger, app metadata, and npm-only README. `npm ls --depth=0`, `git diff --check`, `npm run lint` (0 errors; one existing unused `app` warning in `src/lib/firebase/client.ts`), `npm run typecheck`, and configured `npm run build` all exit 0. Next's installed docs support Webpack as a builder option; the default Turbopack build was separately attempted and blocked by sandbox port binding, so `build` uses `next build --webpack`. A dev server already occupied localhost:3000; its five required routes returned 200, all three placeholder API methods returned 501 with `Cache-Control: private, no-store` and `Authorization` in `Vary`, and the browser showed the theme menu with no console errors. Starting another dev server was prevented by the occupied port; no tests are installed for M1. M2 may proceed. |
-| M2 Auth and trusted persistence foundation      | Complete, reverified | 2026-10-27: three review findings fixed; unit 7/7, authenticated HTTP 8/8, rules 3/3 (45 denied operations), lint/typecheck/build/dependency audit passed. System OpenJDK 21.0.12.1 used. Build, emulator tests, and audit required execution outside the sandbox; see current evidence below. M3 may begin but remains unstarted.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| M3 Validated import                             | Not started          | Depends on M2                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| M2 Auth and trusted persistence foundation      | Complete, reverified | 2026-10-27: three review findings fixed; unit 7/7, authenticated HTTP 8/8, rules 3/3 (45 denied operations), lint/typecheck/build/dependency audit passed. System OpenJDK 21.0.12.1 used. Build, emulator tests, and audit required execution outside the sandbox; see current evidence below. M3 was eligible to begin at that point.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| M3 Validated import                             | Complete             | 2026-10-27: automated checks and demo browser flows pass; native file picker remains blocked by the browser extension setting; see M3 evidence below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | M4 Practice and draft persistence               | Not started          | Depends on M3                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | M5 Grading and durable review                   | Not started          | Depends on M4                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | M6 Progress and teacher export                  | Not started          | Depends on M5                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -247,7 +247,7 @@ request was interrupted; the subsequently installed system Java was used instead
 
 The final diff was inspected for unintended changes and credential/token exposure;
 no credentials or tokens were added. No mandatory M2 gate remains blocked.
-M2's Definition of Done is met on this evidence; M3 is eligible but **not started**.
+M2's Definition of Done was met on this evidence; M3 had not started at that point.
 Real Google popup/session behavior, browser remount/back-navigation privacy,
 production token signatures/revocation, and production configuration remain later
 external/browser checks; no production-readiness claim is made.
@@ -266,17 +266,17 @@ UI, `/api/packs/import`, pack list/detail routes, example-based fixtures/tests.
 
 **Tasks:**
 
-- [ ] Implement all v1 fields, discriminated unions, cross-references, limits,
+- [x] Implement all v1 fields, discriminated unions, cross-references, limits,
       explicit version rejection, and canonical hashing from CONTENT_CONTRACT.
-- [ ] Implement JSON file/paste input and one shared preview; errors identify
+- [x] Implement JSON file/paste input and one shared preview; errors identify
       fields without echoing untrusted values as HTML. Confirm/cancel before writes.
-- [ ] Atomically persist projected learner pack and separate keys. Enforce same
+- [x] Atomically persist projected learner pack and separate keys. Enforce same
       ID/hash duplicate and changed-ID-content conflict policy; discard raw import
       state on success/cancel. Implement bounded lists and cursor validation.
-- [ ] Test real example, non-Japanese fixture, malformed JSON, depth/size including
+- [x] Test real example, non-Japanese fixture, malformed JSON, depth/size including
       chunked bodies, invalid versions/IDs/references/choices, unknown nested fields,
       unsupported exercise types, normalized duplicate answers, and adversarial strings.
-- [ ] Test two concurrent imports, whitespace/key-order equivalence, hash-changing
+- [x] Test two concurrent imports, whitespace/key-order equivalence, hash-changing
       content conflict, isolation, atomic failure, and positive-list key redaction.
 
 **Acceptance/verification:** baseline + unit + emulator suites pass. Both input
@@ -284,6 +284,51 @@ paths import the same example; cancel/invalid input writes nothing; duplicate
 import preserves importedAt; no practice/list DTO contains an answer/explanation.
 Render `<script>`/instruction-like strings inertly. **Definition of Done:** import
 and retrieve are complete and tested; no grading/session feature added early.
+
+### M3 evidence (2026-10-27)
+
+Implemented the shared strict schema, canonical hash, learner projection, atomic
+pack/key import, owner-scoped list/detail APIs, and file/paste preview UI in
+`src/features/content`, `src/app/api/packs`, and the import page. Updated the M2
+Origin guard in `src/lib/api/server.ts`: Next's local Route Handler URL uses an
+internal hostname, so same-origin checks use the request Host and URL protocol.
+Added schema, preview, account-unmount, and HTTP/emulator coverage under `tests/`.
+
+- **Pass:** `npm ls --depth=0`, `git diff --check`, `npm run lint`, `npm run
+  typecheck`, `npm run test:unit` (16 tests), `npm run test:emulators` (9 HTTP
+  and 3 rules tests), `npm run build`, and `npm audit --omit=dev` (0 vulnerabilities).
+  Emulator, build, and audit needed execution outside the sandbox.
+- **Pass:** concurrent identical imports produce a matched pair; retry preserves
+  `importedAt`; changed content conflicts; two UIDs remain isolated; list/detail
+  omit nested keys. Tests cover a near-128 KiB write, exact byte limit including
+  whitespace and stream input, both orphan-pair cases, emulator transaction
+  rollback, deterministic timestamp/ID pagination with sub-millisecond precision,
+  malformed cursor, file/paste preview equivalence, and no POST on cancel or
+  invalid preview. File confirmation sends the original JSON in the unit harness.
+- **Browser pass:** on an isolated demo-only server and Auth/Firestore emulators,
+  original fixture through a browser File object, preview and confirm (201),
+  then paste of the same fixture and duplicate (200). File selection was simulated
+  by a control only in the isolated test copy. A separate non-Japanese
+  fixture covered cancel, duplicate (200), changed-content conflict (409), and
+  script-like text rendered inertly. Logout and switching to another demo UID
+  cleared the preview while an 8-second delayed response was pending; the old
+  response did not appear after it completed. The delay and account-switch control
+  existed only in the isolated test copy.
+- **Fail then fixed:** browser confirm initially received 403 because the internal
+  Next hostname differed from the browser host; same-origin and cross-origin HTTP
+  cases now pass. An initial pagination fixture assumed nanosecond storage;
+  Firestore rounded it to microseconds, so the fixture now tests stored precision.
+- **Blocked:** browser file selection of the original fixture requires enabling
+  file-URL access in the Brave extension; that setting was not changed. Browser
+  upload through the real browser file picker remains unverified; file preview
+  and confirmation are covered by the unit harness. No production Firebase was
+  accessed. Emulator success does not establish production index availability.
+
+The original fixture was imported through the browser File API and paste path;
+the actual OS file-selection dialog remains unverified as stated above. The
+final diff was checked for unintended changes and credential/token exposure;
+no credentials were added. M3 is complete with that browser limitation recorded.
+M4 has not started.
 
 ## M4 — Practice renderer and saved draft sessions
 
