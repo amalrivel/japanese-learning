@@ -164,6 +164,10 @@ describe("authenticated API boundary", () => {
     const forbidden = await fetch(url, { headers: { Authorization: `Bearer ${tokens[2]}` } });
     expect(forbidden.status).toBe(403);
     expect(await forbidden.text()).not.toContain(tokens[2]);
+    const forbiddenAttempts = await fetch("http://127.0.0.1:3100/api/attempts", {
+      headers: { Authorization: `Bearer ${tokens[2]}` },
+    });
+    expect(forbiddenAttempts.status).toBe(403);
   });
 
   it("returns an empty bounded list only for each approved UID and guards placeholders", async () => {
@@ -187,7 +191,7 @@ describe("authenticated API boundary", () => {
       ...post,
       headers: { ...post.headers, Authorization: `Bearer ${tokens[0]}` },
     });
-    expect(authorizedPlaceholder.status).toBe(501);
+    expect(authorizedPlaceholder.status).toBe(422);
     expect(authorizedPlaceholder.headers.get("cache-control")).toBe("private, no-store");
 
     const invalidJson = await fetch("http://127.0.0.1:3100/api/attempts", {
@@ -236,12 +240,12 @@ describe("authenticated API boundary", () => {
         url,
         authenticated ? { headers: { Authorization: `Bearer ${tokens[0]}` } } : {},
       );
-      expect(response.status).toBe(authenticated ? 501 : 401);
+      expect(response.status).toBe(authenticated ? 200 : 401);
       expect(response.headers.get("cache-control")).toBe("private, no-store");
       expect(response.headers.get("vary")).toContain("Authorization");
-      expect((await response.json()).error.code).toBe(
-        authenticated ? "NOT_IMPLEMENTED" : "UNAUTHENTICATED",
-      );
+      const data = await response.json();
+      if (authenticated) expect(data).toEqual({ items: [], nextCursor: null });
+      else expect(data.error.code).toBe("UNAUTHENTICATED");
     }
     for (const contentType of [undefined, "text/plain"]) {
       const response = await fetch(url, {
@@ -353,6 +357,211 @@ describe("authenticated API boundary", () => {
     onlyA.id = "only-a";
     expect((await post(0, JSON.stringify(onlyA))).status).toBe(201);
     expect((await fetch(`${url}/only-a`, { headers: headers(1) })).status).toBe(404);
+    const attempts = "http://127.0.0.1:3100/api/attempts";
+    const attemptId = "11111111-1111-4111-8111-111111111111";
+    const start = (index: number, packId = fixture.id) =>
+      fetch(attempts, {
+        method: "POST",
+        headers: headers(index),
+        body: JSON.stringify({ attemptId, packId }),
+      });
+    expect((await start(0)).status).toBe(201);
+    expect((await start(0)).status).toBe(200);
+    expect((await start(0, "only-a")).status).toBe(409);
+    expect((await fetch(`${attempts}/${attemptId}`, { headers: headers(1) })).status).toBe(404);
+    expect(
+      (
+        await fetch(`${attempts}/${attemptId}`, {
+          method: "PATCH",
+          headers: headers(1),
+          body: JSON.stringify({ revision: 0, answers: {} }),
+        })
+      ).status,
+    ).toBe(404);
+    const save = (text: string) =>
+      fetch(`${attempts}/${attemptId}`, {
+        method: "PATCH",
+        headers: headers(0),
+        body: JSON.stringify({ revision: 0, answers: { "habit-short": { text } } }),
+      });
+    const saves = await Promise.all([save("first"), save("second")]);
+    expect(saves.map((response) => response.status).sort()).toEqual([200, 409]);
+    const current = await (await fetch(`${attempts}/${attemptId}`, { headers: headers(0) })).json();
+    expect(current.revision).toBe(1);
+    expect(["first", "second"]).toContain(current.answers["habit-short"].text);
+    const retriedStart = await (await start(0)).json();
+    expect(retriedStart.answers).toEqual(current.answers);
+    expect(retriedStart.revision).toBe(current.revision);
+    expect(retriedStart.createdAt).toBe(current.createdAt);
+    expect(retriedStart.updatedAt).toBe(current.updatedAt);
+    expect((await start(1)).status).toBe(201);
+    const bSave = await fetch(`${attempts}/${attemptId}`, {
+      method: "PATCH",
+      headers: headers(1),
+      body: JSON.stringify({ revision: 0, answers: { "habit-short": { text: "user B" } } }),
+    });
+    expect(bSave.status).toBe(200);
+    const bAttempt = await (
+      await fetch(`${attempts}/${attemptId}`, { headers: headers(1) })
+    ).json();
+    expect(bAttempt.answers["habit-short"].text).toBe("user B");
+    expect(bAttempt.packTitle).toBe("Different");
+    expect(
+      (await (await fetch(`${attempts}/${attemptId}`, { headers: headers(0) })).json()).answers,
+    ).toEqual(current.answers);
+    expect((await save("stale")).status).toBe(409);
+    expect(
+      (await (await fetch(`${attempts}/${attemptId}`, { headers: headers(0) })).json()).answers,
+    ).toEqual(current.answers);
+    await root
+      .collection("attempts")
+      .doc(attemptId)
+      .update({ explanation: "private sentinel", grade: "private sentinel" });
+    const projected = await (
+      await fetch(`${attempts}/${attemptId}`, { headers: headers(0) })
+    ).text();
+    expect(projected).not.toContain("private sentinel");
+    const invalidSave = await fetch(`${attempts}/${attemptId}`, {
+      method: "PATCH",
+      headers: headers(0),
+      body: JSON.stringify({ revision: 1, answers: { "noni-choice": { choiceId: "unknown" } } }),
+    });
+    expect(invalidSave.status).toBe(422);
+    const badFields = Object.fromEntries(
+      Array.from({ length: 25 }, (_, i) => [`bad-${i}`, { text: 123 }]),
+    );
+    const invalidFields = await fetch(`${attempts}/${attemptId}`, {
+      method: "PATCH",
+      headers: headers(0),
+      body: JSON.stringify({ revision: 1, answers: badFields }),
+    });
+    const invalidBody = await invalidFields.json();
+    expect(invalidFields.status).toBe(422);
+    expect(invalidBody.error.message).toContain("25 issue(s)");
+    expect(invalidBody.error.issues).toHaveLength(20);
+    for (const field of ["uid", "grade", "result", "updatedAt"]) {
+      expect(
+        (
+          await fetch(`${attempts}/${attemptId}`, {
+            method: "PATCH",
+            headers: headers(0),
+            body: JSON.stringify({ revision: 1, answers: {}, [field]: "forged" }),
+          })
+        ).status,
+      ).toBe(422);
+    }
+    for (const endpoint of ["submit", "assessments"]) {
+      expect(
+        (
+          await fetch(`${attempts}/${attemptId}/${endpoint}`, {
+            method: "POST",
+            headers: headers(0),
+            body: "{}",
+          })
+        ).status,
+      ).toBe(404);
+    }
+    expect(
+      (
+        await fetch(`${attempts}/${attemptId}`, {
+          method: "PATCH",
+          headers: { ...headers(0), Origin: "http://attacker.test" },
+          body: JSON.stringify({ revision: 1, answers: {} }),
+        })
+      ).status,
+    ).toBe(403);
+    await root.collection("attempts").doc(attemptId).update({ status: "completed" });
+    const nonDraft = await fetch(`${attempts}/${attemptId}`, {
+      method: "PATCH",
+      headers: headers(0),
+      body: JSON.stringify({ revision: 1, answers: {} }),
+    });
+    expect(nonDraft.status).toBe(409);
+    expect((await root.collection("attempts").doc(attemptId).get()).get("answers")).toEqual(
+      current.answers,
+    );
+    expect(JSON.stringify([current, retriedStart, bAttempt])).not.toMatch(
+      /explanation|acceptedAnswers|modelAnswer|rubric|feedback/,
+    );
+    const history = await (
+      await fetch(`${attempts}?packId=${fixture.id}`, { headers: headers(0) })
+    ).json();
+    expect(history.items.map((item: { id: string }) => item.id)).toContain(attemptId);
+    expect(JSON.stringify(history)).not.toMatch(/explanation|acceptedAnswers|modelAnswer|rubric/);
+    const ids = ["22222222-2222-4222-8222-222222222222", "33333333-3333-4333-8333-333333333333"];
+    for (const id of ids) {
+      expect(
+        (
+          await fetch(attempts, {
+            method: "POST",
+            headers: headers(0),
+            body: JSON.stringify({ attemptId: id, packId: fixture.id }),
+          })
+        ).status,
+      ).toBe(201);
+      await root
+        .collection("attempts")
+        .doc(id)
+        .update({ createdAt: new Timestamp(253402300000, 123456000) });
+    }
+    const firstHistory = await (
+      await fetch(`${attempts}?packId=${fixture.id}&limit=1`, { headers: headers(0) })
+    ).json();
+    expect(firstHistory.items[0].id).toBe(ids[1]);
+    expect(
+      JSON.parse(Buffer.from(firstHistory.nextCursor, "base64url").toString()).nanoseconds,
+    ).toBe(123456000);
+    const secondHistory = await (
+      await fetch(`${attempts}?packId=${fixture.id}&limit=1&cursor=${firstHistory.nextCursor}`, {
+        headers: headers(0),
+      })
+    ).json();
+    expect(secondHistory.items[0].id).toBe(ids[0]);
+    expect(
+      (
+        await fetch(`${attempts}?packId=only-a&cursor=${firstHistory.nextCursor}`, {
+          headers: headers(0),
+        })
+      ).status,
+    ).toBe(422);
+    expect((await fetch(`${attempts}?cursor=invalid`, { headers: headers(0) })).status).toBe(422);
+    expect((await fetch(`${attempts}?limit=51`, { headers: headers(0) })).status).toBe(422);
+    const snapshotId = "55555555-5555-4555-8555-555555555555";
+    expect(
+      (
+        await fetch(attempts, {
+          method: "POST",
+          headers: headers(0),
+          body: JSON.stringify({ attemptId: snapshotId, packId: fixture.id }),
+        })
+      ).status,
+    ).toBe(201);
+    const writeSnapshot = (revision: number, answers: object) =>
+      fetch(`${attempts}/${snapshotId}`, {
+        method: "PATCH",
+        headers: headers(0),
+        body: JSON.stringify({ revision, answers }),
+      });
+    expect(
+      (
+        await writeSnapshot(0, {
+          "noni-choice": { choiceId: "noni" },
+          "prepare-blank": { text: "x" },
+        })
+      ).status,
+    ).toBe(200);
+    expect((await writeSnapshot(1, { "reading-short": { text: "new snapshot" } })).status).toBe(
+      200,
+    );
+    const recoveredSnapshot = await (
+      await fetch(`${attempts}/${snapshotId}`, { headers: headers(0) })
+    ).json();
+    expect(recoveredSnapshot.revision).toBe(2);
+    expect(recoveredSnapshot.answers).toEqual({ "reading-short": { text: "new snapshot" } });
+    expect((await writeSnapshot(1, {})).status).toBe(409);
+    expect(
+      (await (await fetch(`${attempts}/${snapshotId}`, { headers: headers(0) })).json()).answers,
+    ).toEqual(recoveredSnapshot.answers);
     const page1 = await (await fetch(`${url}?limit=1`, { headers: headers(0) })).json();
     expect(page1.items).toHaveLength(1);
     expect(page1.nextCursor).toBeTruthy();
@@ -418,6 +627,52 @@ describe("authenticated API boundary", () => {
     const largeKeys = await root.collection("packKeys").doc(large.id).get();
     expect(Buffer.byteLength(JSON.stringify(largePack.data()))).toBeLessThanOrEqual(512 * 1024);
     expect(Buffer.byteLength(JSON.stringify(largeKeys.data()))).toBeLessThanOrEqual(512 * 1024);
+    const largeAttemptId = "44444444-4444-4444-8444-444444444444";
+    expect(
+      (
+        await fetch(attempts, {
+          method: "POST",
+          headers: headers(0),
+          body: JSON.stringify({ attemptId: largeAttemptId, packId: large.id }),
+        })
+      ).status,
+    ).toBe(201);
+    const largeAnswers = Object.fromEntries(
+      large.exercises.map((exercise: { id: string }) => [exercise.id, { text: "界".repeat(2000) }]),
+    );
+    const largeSave = await fetch(`${attempts}/${largeAttemptId}`, {
+      method: "PATCH",
+      headers: headers(0),
+      body: JSON.stringify({ revision: 0, answers: largeAnswers }),
+    });
+    expect(largeSave.status).toBe(200);
+    const storedLargeAttempt = await root.collection("attempts").doc(largeAttemptId).get();
+    expect(Buffer.byteLength(JSON.stringify(storedLargeAttempt.data()))).toBeLessThanOrEqual(
+      512 * 1024,
+    );
+    const overLimit = await fetch(`${attempts}/${largeAttemptId}`, {
+      method: "PATCH",
+      headers: headers(0),
+      body: " ".repeat(384 * 1024 + 1),
+    });
+    expect(overLimit.status).toBe(413);
+    const oversizedDraftStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(384 * 1024));
+        controller.enqueue(new Uint8Array(1));
+        controller.close();
+      },
+    });
+    expect(
+      (
+        await fetch(`${attempts}/${largeAttemptId}`, {
+          method: "PATCH",
+          headers: headers(0),
+          body: oversizedDraftStream,
+          duplex: "half",
+        } as RequestInit & { duplex: "half" })
+      ).status,
+    ).toBe(413);
     // Force identical timestamps and sub-millisecond differences to verify both ordering components.
     const seed = first.data()!;
     for (const [id, nanos] of [
@@ -470,7 +725,7 @@ describe("authenticated API boundary", () => {
     expect((await root.collection("packKeys").doc("orphan-pack").get()).exists).toBe(false);
     for (const uid of users.slice(0, 2).map((u) => u.uid))
       await db.recursiveDelete(db.collection("users").doc(uid));
-  }, 30000);
+  }, 60000);
 
   it("fails safely when the server Firebase project is misconfigured", async () => {
     await stopServer();

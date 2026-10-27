@@ -18,7 +18,7 @@ export default function Home() {
           <p className="text-sm text-muted-foreground">Personalized Learning</p>
           <h1 className="mt-2 text-3xl font-semibold">Your learning workspace</h1>
           <p className="mt-3 text-muted-foreground">
-            The application shell is ready. Learning features are not available yet.
+            Import a learning pack, practice, and return to your saved drafts.
           </p>
         </div>
         <ModeToggle />

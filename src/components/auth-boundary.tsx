@@ -34,7 +34,14 @@ export function AuthBoundary({ children }: { children: React.ReactNode }) {
     <div key={user.uid} className="flex min-h-full flex-1 flex-col">
       <div className="mx-auto flex w-full max-w-3xl items-center justify-end gap-3 px-6 pt-5 text-sm">
         <span>{user.email ?? "Signed in"}</span>
-        <Button variant="outline" size="sm" onClick={signOutUser}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            if (window.dispatchEvent(new Event("learning:signout", { cancelable: true })))
+              void signOutUser();
+          }}
+        >
           Sign out
         </Button>
       </div>

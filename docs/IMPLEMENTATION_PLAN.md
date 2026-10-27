@@ -1,7 +1,7 @@
 # Luna 6 execution plan
 
-Status: M1, M2, and M3 implemented and verified on 2026-10-27. M4 has not
-started. Run one milestone at a time in dependency order. Do not infer completion
+Status: M1–M3 were implemented and verified on 2026-10-27; M4 was implemented
+and verified on 2026-10-28. Run one milestone at a time in dependency order. Do not infer completion
 from a checked box without recorded command/browser evidence. Contracts take precedence over incidental
 starter examples. Read [PRD](PRD.md), [architecture](ARCHITECTURE.md), and
 [content contract](CONTENT_CONTRACT.md) before editing application code.
@@ -14,7 +14,7 @@ starter examples. Read [PRD](PRD.md), [architecture](ARCHITECTURE.md), and
 | M1 Runnable baseline                            | Complete             | 2026-10-26: added the npm typecheck command, navigable root shell, page placeholders, private/no-store 501 API placeholders, Base UI `render` trigger, app metadata, and npm-only README. `npm ls --depth=0`, `git diff --check`, `npm run lint` (0 errors; one existing unused `app` warning in `src/lib/firebase/client.ts`), `npm run typecheck`, and configured `npm run build` all exit 0. Next's installed docs support Webpack as a builder option; the default Turbopack build was separately attempted and blocked by sandbox port binding, so `build` uses `next build --webpack`. A dev server already occupied localhost:3000; its five required routes returned 200, all three placeholder API methods returned 501 with `Cache-Control: private, no-store` and `Authorization` in `Vary`, and the browser showed the theme menu with no console errors. Starting another dev server was prevented by the occupied port; no tests are installed for M1. M2 may proceed. |
 | M2 Auth and trusted persistence foundation      | Complete, reverified | 2026-10-27: three review findings fixed; unit 7/7, authenticated HTTP 8/8, rules 3/3 (45 denied operations), lint/typecheck/build/dependency audit passed. System OpenJDK 21.0.12.1 used. Build, emulator tests, and audit required execution outside the sandbox; see current evidence below. M3 was eligible to begin at that point.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | M3 Validated import                             | Complete             | 2026-10-27: automated checks and demo browser flows pass; native file picker remains blocked by the browser extension setting; see M3 evidence below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| M4 Practice and draft persistence               | Not started          | Depends on M3                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| M4 Practice and draft persistence               | Complete             | 2026-10-28: draft APIs, practice/history UI, emulator and browser verification passed; see M4 evidence below. M5 may begin.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | M5 Grading and durable review                   | Not started          | Depends on M4                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | M6 Progress and teacher export                  | Not started          | Depends on M5                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | M7 Full-loop verification and release readiness | Not started          | Depends on M6; hosted smoke checks need owner configuration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -328,7 +328,7 @@ The original fixture was imported through the browser File API and paste path;
 the actual OS file-selection dialog remains unverified as stated above. The
 final diff was checked for unintended changes and credential/token exposure;
 no credentials were added. M3 is complete with that browser limitation recorded.
-M4 has not started.
+M4 had not started at the time of this M3 evidence.
 
 ## M4 — Practice renderer and saved draft sessions
 
@@ -339,14 +339,14 @@ session/renderer UI and persistence; learner practice/history pages;
 
 **Tasks:**
 
-- [ ] Render choice, one-blank, exact/self short-answer, and self-review inputs
+- [x] Render choice, one-blank, exact/self short-answer, and self-review inputs
       with associated labels, keyboard navigation, focus/error states, and plain text.
-- [ ] Start UUID-based attempts idempotently; persist partial answer snapshots
+- [x] Start UUID-based attempts idempotently; persist partial answer snapshots
       with revisions. Serialize autosaves, show saved/saving/failed status, provide
       explicit Save, and warn before leaving with unsaved work.
-- [ ] Implement resume/history with pagination and optional pack filter. Refetch
+- [x] Implement resume/history with pagination and optional pack filter. Refetch
       on stale revision and preserve recoverable local text; do not auto-overwrite.
-- [ ] Test wrong answer shapes/unknown exercise IDs, repeated start, same UUID
+- [x] Test wrong answer shapes/unknown exercise IDs, repeated start, same UUID
       wrong pack, two-tab stale saves, account switching, lost-response retry recovery,
       and attempts belonging to another UID. Submit remains unavailable until M5.
 
@@ -355,6 +355,51 @@ five example variants, acknowledges Save, reloads/resumes exact saved choices/te
 network failure visibly reports unsaved state; draft responses contain no keys.
 **Definition of Done:** durable drafts and safe rendering verified without offline
 storage, grading, or new frameworks.
+
+### M4 evidence (2026-10-28, Asia/Tokyo)
+
+Implemented strict draft answers, owner-scoped transactional attempt persistence,
+positive-list responses, attempt routes, practice rendering, serialized autosave,
+conflict recovery, history/filter/pagination, and account lifecycle cleanup in
+`src/features/practice`, `src/app/api/attempts`, and learner pages. Added a
+Playwright browser harness and demo-only sign-in in an isolated temporary copy;
+the production application has no test sign-in route. Submit and assessments
+remain unavailable. A retry ID survives reload in the URL, with its owning UID
+checked against browser history state; no answer or token is manually persisted there.
+
+- **Pass:** `npm ls --depth=0`, `git diff --check`, `npm run lint`, `npm run
+  typecheck`, `npm run test:unit` (20 tests), `npm run test:emulators` (9 HTTP
+  and 3 rules tests), `npm run build`, and `npm audit --omit=dev` (0
+  vulnerabilities). Emulator, build, and registry audit ran outside the sandbox.
+  Emulator tests cover same-ID retries, full snapshot replacement, stale and
+  concurrent writes, non-draft rejection, two distinct UID datasets, direct
+  cross-UID 404s, redaction, exact cursor ordering/filtering, 40 maximal text
+  answers, and the 384 KiB limit including a stream without Content-Length.
+- **Browser pass:** `npm run test:browser:emulators` (3 tests), headless Google
+  Chrome 156.0.8078.47 and Playwright 1.64.1, with only the demo Auth/Firestore
+  emulators. The five fixture variants survived Save, history navigation, and
+  reload; an acknowledged answer also survived sign-out/sign-in. Tests exercised
+  keyboard choice selection, a lost start response with the same retry ID, a
+  lost save response, edits while saving, a failed recovery GET followed by a
+  revision-checked retry, and the case where an old revision is still visible
+  while an earlier write may be pending. Two-tab conflicts retained local input
+  and exercised both recovery choices. Tests also covered cancellation of link,
+  Back, reload, and sign-out navigation while unsaved; delayed responses after
+  sign-out; account switching; and absence of key fields in observed API payloads.
+  The example model answer was not found in the generated static assets.
+- **Fail then resolved:** sandboxed emulator port binding returned `EPERM`, and
+  sandboxed build could not parse TypeScript configuration; both passed outside
+  the sandbox. Earlier browser runs exposed a selector ambiguity and an autosave
+  timing assumption in the tests; the final three browser tests pass.
+- **Additional audit:** full `npm audit` reported five moderate development-only
+  dependency findings through `firebase-tools`; its suggested major-version
+  change was not applied. The required production-only audit passed.
+- **Still unverified:** the M3 native file-selection dialog and production
+  Firestore index availability remain as recorded above. Browser evidence is
+  limited to the listed headless Chrome version and demo emulators; no production
+  Firebase, real Google login, deployment, or offline synchronization was tested.
+
+M4 is complete for its stated scope; M5 is eligible to begin and remains unstarted.
 
 ## M5 — Deterministic grading and immutable review
 

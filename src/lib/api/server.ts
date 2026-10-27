@@ -16,6 +16,21 @@ export function apiError(status: number, code: string, message: string) {
   return apiJson({ error: { code, message } }, status);
 }
 
+export function apiValidationError(issues: readonly { path: readonly PropertyKey[] }[]) {
+  return apiJson(
+    {
+      error: {
+        code: "VALIDATION_FAILED",
+        message: `Validation failed with ${issues.length} issue(s).`,
+        issues: issues
+          .slice(0, 20)
+          .map((issue) => ({ path: issue.path.map(String).join("."), message: "Invalid value." })),
+      },
+    },
+    422,
+  );
+}
+
 export function methodNotAllowed() {
   return apiError(405, "METHOD_NOT_ALLOWED", "This method is not available for this endpoint.");
 }
