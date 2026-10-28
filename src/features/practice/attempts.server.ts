@@ -1,10 +1,19 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { FieldPath, FieldValue, Timestamp } from "firebase-admin/firestore";
 import { z } from "zod";
 import { getFirebaseAdmin } from "@/lib/firebase/admin";
-import { idSchema, type LearningPack } from "@/features/content/schema";
+import { canonicalJson, idSchema, type LearningPack } from "@/features/content/schema";
 import { learnerPack } from "@/features/content/projection";
-import { attemptIdSchema, draftSchema, validateAnswers, type Answers } from "./answers";
+import {
+  attemptIdSchema,
+  draftSchema,
+  validateAnswers,
+  validateCompleteAnswers,
+  type Answers,
+  type Ratings,
+} from "./answers";
+import { applyRatings, gradeAnswers, type Results } from "./grading.server";
 
 const collection = (uid: string) => getFirebaseAdmin().firestore.collection("users").doc(uid);
 const date = (value: Timestamp | null) => (value ? value.toDate().toISOString() : null);
@@ -31,7 +40,122 @@ function draft(data: FirebaseFirestore.DocumentData) {
 
 export async function getAttempt(uid: string, id: string) {
   const doc = await collection(uid).collection("attempts").doc(id).get();
-  return doc.exists ? draft(doc.data()!) : null;
+  if (!doc.exists) return null;
+  const data = doc.data()!;
+  const projected = draft(data);
+  if (data.status === "in_progress") return projected;
+  const keyDoc = await collection(uid).collection("packKeys").doc(data.packId).get();
+  if (!keyDoc.exists || keyDoc.get("contentHash") !== data.packHash)
+    throw new Error("Missing immutable key");
+  const keys = keyDoc.get("keys") as Record<string, LearningPack["exercises"][number]["answer"]>;
+  const results = data.results as Results;
+  const entries = Object.entries(results).map(([exerciseId, result]) => {
+    if (!Object.hasOwn(keys, exerciseId)) throw new Error("Missing key");
+    const key = keys[exerciseId];
+    const feedback =
+      "choiceId" in key
+        ? { choiceId: key.choiceId, explanation: key.explanation }
+        : "acceptedAnswers" in key
+          ? { acceptedAnswers: [...key.acceptedAnswers], explanation: key.explanation }
+          : { modelAnswer: key.modelAnswer, rubric: [...key.rubric], explanation: key.explanation };
+    const grade =
+      result.grade.kind === "objective"
+        ? { kind: "objective" as const, correct: result.grade.correct, score: result.grade.score }
+        : { kind: "self" as const, rating: result.grade.rating, score: result.grade.score };
+    return [
+      exerciseId,
+      { result: { skillIds: [...result.skillIds], type: result.type, grade }, feedback },
+    ] as const;
+  });
+  return {
+    ...projected,
+    results: Object.fromEntries(entries.map(([id, value]) => [id, value.result])),
+    feedback: Object.fromEntries(entries.map(([id, value]) => [id, value.feedback])),
+  };
+}
+
+const hash = (value: unknown) => createHash("sha256").update(canonicalJson(value)).digest("hex");
+
+export async function submitAttempt(uid: string, id: string, revision: number, answers: Answers) {
+  const root = collection(uid);
+  const ref = root.collection("attempts").doc(id);
+  const submissionHash = hash(answers);
+  const result = await getFirebaseAdmin().firestore.runTransaction(async (tx) => {
+    const attempt = await tx.get(ref);
+    if (!attempt.exists) return "not_found";
+    if (attempt.get("status") !== "in_progress")
+      return attempt.get("submissionHash") === submissionHash ? "existing" : "conflict";
+    if (attempt.get("revision") !== revision) return "stale";
+    if (revision === Number.MAX_SAFE_INTEGER) return "invalid_state";
+    const packId = attempt.get("packId");
+    const [pack, key] = await tx.getAll(
+      root.collection("packs").doc(packId),
+      root.collection("packKeys").doc(packId),
+    );
+    if (
+      !pack.exists ||
+      !key.exists ||
+      pack.get("contentHash") !== attempt.get("packHash") ||
+      key.get("contentHash") !== attempt.get("packHash")
+    )
+      throw new Error("Missing immutable pack pair");
+    const exercises = learnerPack(pack.data() as LearningPack).exercises;
+    if (!validateCompleteAnswers(answers, exercises)) return "invalid";
+    const results = gradeAnswers(exercises, key.get("keys"), answers);
+    if (Buffer.byteLength(JSON.stringify({ ...attempt.data(), answers, results })) > 512 * 1024)
+      return "invalid";
+    const pending = Object.values(results).some((value) => value.grade.kind === "self");
+    tx.update(ref, {
+      answers,
+      results,
+      submissionHash,
+      status: pending ? "awaiting_self_review" : "completed",
+      revision: revision + 1,
+      updatedAt: FieldValue.serverTimestamp(),
+      submittedAt: FieldValue.serverTimestamp(),
+      completedAt: pending ? null : FieldValue.serverTimestamp(),
+    });
+    return "submitted";
+  });
+  return {
+    result,
+    attempt: result === "submitted" || result === "existing" ? await getAttempt(uid, id) : null,
+  };
+}
+
+export async function assessAttempt(uid: string, id: string, ratings: Ratings) {
+  const ref = collection(uid).collection("attempts").doc(id);
+  const assessmentHash = hash(ratings);
+  const result = await getFirebaseAdmin().firestore.runTransaction(async (tx) => {
+    const attempt = await tx.get(ref);
+    if (!attempt.exists) return "not_found";
+    if (attempt.get("status") === "completed") {
+      if (!attempt.get("assessmentHash")) return "invalid_state";
+      return attempt.get("assessmentHash") === assessmentHash ? "existing" : "conflict";
+    }
+    if (attempt.get("status") !== "awaiting_self_review") return "invalid_state";
+    if (attempt.get("revision") === Number.MAX_SAFE_INTEGER) return "invalid_state";
+    const results = applyRatings(attempt.get("results"), ratings);
+    if (!results) return "invalid";
+    if (
+      Buffer.byteLength(JSON.stringify({ ...attempt.data(), results, assessmentHash })) >
+      512 * 1024
+    )
+      return "invalid";
+    tx.update(ref, {
+      results,
+      assessmentHash,
+      status: "completed",
+      revision: attempt.get("revision") + 1,
+      updatedAt: FieldValue.serverTimestamp(),
+      completedAt: FieldValue.serverTimestamp(),
+    });
+    return "assessed";
+  });
+  return {
+    result,
+    attempt: result === "assessed" || result === "existing" ? await getAttempt(uid, id) : null,
+  };
 }
 
 export async function startAttempt(uid: string, id: string, packId: string) {

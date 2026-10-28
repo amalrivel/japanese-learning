@@ -1,6 +1,6 @@
 # Luna 6 execution plan
 
-Status: M1–M3 were implemented and verified on 2026-10-27; M4 was implemented
+Status: M1–M3 were implemented and verified on 2026-10-27; M4 and M5 were implemented
 and verified on 2026-10-28. Run one milestone at a time in dependency order. Do not infer completion
 from a checked box without recorded command/browser evidence. Contracts take precedence over incidental
 starter examples. Read [PRD](PRD.md), [architecture](ARCHITECTURE.md), and
@@ -15,7 +15,7 @@ starter examples. Read [PRD](PRD.md), [architecture](ARCHITECTURE.md), and
 | M2 Auth and trusted persistence foundation      | Complete, reverified | 2026-10-27: three review findings fixed; unit 7/7, authenticated HTTP 8/8, rules 3/3 (45 denied operations), lint/typecheck/build/dependency audit passed. System OpenJDK 21.0.12.1 used. Build, emulator tests, and audit required execution outside the sandbox; see current evidence below. M3 was eligible to begin at that point.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | M3 Validated import                             | Complete             | 2026-10-27: automated checks and demo browser flows pass; native file picker remains blocked by the browser extension setting; see M3 evidence below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | M4 Practice and draft persistence               | Complete             | 2026-10-28: draft APIs, practice/history UI, emulator and browser verification passed; see M4 evidence below. M5 may begin.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| M5 Grading and durable review                   | Not started          | Depends on M4                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| M5 Grading and durable review                   | Complete             | 2026-10-28: deterministic grading, immutable submission/review, emulator and browser verification passed; see M5 evidence below. M6 may begin.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | M6 Progress and teacher export                  | Not started          | Depends on M5                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | M7 Full-loop verification and release readiness | Not started          | Depends on M6; hosted smoke checks need owner configuration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | M8 Installability                               | Deferred             | Optional only after M7; no offline sync                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
@@ -399,7 +399,7 @@ checked against browser history state; no answer or token is manually persisted 
   limited to the listed headless Chrome version and demo emulators; no production
   Firebase, real Google login, deployment, or offline synchronization was tested.
 
-M4 is complete for its stated scope; M5 is eligible to begin and remains unstarted.
+M4 was complete for its stated scope; M5 was eligible to begin at that point.
 
 ## M5 — Deterministic grading and immutable review
 
@@ -409,14 +409,14 @@ submit/assessments routes, results UI, history detail page, test fixtures.
 
 **Tasks:**
 
-- [ ] Implement documented normalization and objective grading; no fuzzy/AI grading.
+- [x] Implement documented normalization and objective grading; no fuzzy/AI grading.
       Unit cases include NFKC full-width text, whitespace, case, punctuation mismatch,
       missing answers, and multiple accepted answers.
-- [ ] Validate/freeze complete answers and compute results transactionally.
+- [x] Validate/freeze complete answers and compute results transactionally.
       Introduce objective-only completion and awaiting_self_review → completed states.
-- [ ] Reveal feedback only for submitted attempts; collect all self ratings once.
+- [x] Reveal feedback only for submitted attempts; collect all self ratings once.
       Serialize saves before submit, retain latest revision, and surface conflicts.
-- [ ] Test concurrent/retried submit and assessment, different retry payloads,
+- [x] Test concurrent/retried submit and assessment, different retry payloads,
       malformed ratings, stale revision, no edits after completion, and key/score/UID
       injection. Grade results must come from stored keys, never the client.
 
@@ -426,6 +426,49 @@ results survive reload and review. Objective-only fixture completes at submit.
 Repeated submission/assessment changes neither totals nor lifecycle timestamps.
 **Definition of Done:** history is reviewable, state machine/idempotency tests
 pass, and all pre-submission key-leak tests remain green.
+
+### M5 evidence (2026-10-28, Asia/Tokyo)
+
+Implemented deterministic server-only grading, complete-answer and rating
+validation, transactional submission and assessment with canonical hashes,
+positive-list draft/review projections, and owner-scoped submit/assessment routes.
+The practice UI flushes and waits for draft saves before submission, freezes the
+snapshot during retries, and displays immutable objective results and self-review
+feedback. History resumes pending review and completed review; a new attempt uses
+a new UUID. Changes are in `src/features/practice`, `src/app/api/attempts`, and
+the existing unit, HTTP/emulator, and browser tests. M6 remains unstarted.
+
+- **Pass:** `npm ls --depth=0`, `git diff --check`, `npm run lint`, `npm run
+  typecheck`, `npm run test:unit` (21 tests), `npm run test:emulators` (9 HTTP
+  and 3 rules tests), `npm run build`, and `npm audit --omit=dev` (0
+  vulnerabilities). HTTP/emulator cases cover normalization, alternative
+  accepted answers and punctuation, objective-only and self-only packs,
+  complete validation, concurrent and retried submit/assessment, canonical hash
+  ordering, stale revisions, save/submit races, immutable timestamps/results,
+  UID isolation, redaction, error privacy, and maximal 40-answer documents.
+- **Browser pass:** `npm run test:browser:emulators` (5 tests), headless Chrome
+  156.0.8078.47 with demo Auth/Firestore emulators. The M4 regression suite and
+  M5 flow covered all five variants, an edit during delayed autosave followed by
+  submit, lost submit/assessment responses and identical retries, three objective
+  results, two pending ratings, reload and completion, completed history review,
+  objective-only completion, a new UUID for retrying practice, and an old review
+  response arriving after logout/account switch. The example model answer was
+  absent from generated static assets.
+- **Fail then resolved:** sandboxed browser/emulator port checks and the sandboxed
+  build failed; the same checks passed outside the sandbox. The initial production
+  audit reported three low findings in `shadcn`/`deepmerge`. `shadcn` is used by
+  this app only for its build-time stylesheet and CLI, so the same locked version
+  was moved to devDependencies; no package versions were raised. A build requires
+  development dependencies to be installed. This reclassification does not fix
+  the vulnerable tooling code.
+- **Remaining risks:** the full dependency audit still reports eight development
+  findings (three low through `shadcn`/`deepmerge`, five moderate through existing
+  `firebase-tools` dependencies); no breaking dependency changes were applied.
+  Real Google login, production Firestore indexes, and M3's native file picker
+  remain unverified. Browser evidence is limited to the listed Chrome version and
+  demo emulators; no production Firebase or deployment was accessed.
+
+M5 is complete for its stated scope; M6 is eligible to begin and remains unstarted.
 
 ## M6 — Skill progress and read-only Teacher Report
 

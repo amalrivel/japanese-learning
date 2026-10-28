@@ -459,7 +459,7 @@ describe("authenticated API boundary", () => {
             body: "{}",
           })
         ).status,
-      ).toBe(404);
+      ).toBe(422);
     }
     expect(
       (
@@ -673,6 +673,31 @@ describe("authenticated API boundary", () => {
         } as RequestInit & { duplex: "half" })
       ).status,
     ).toBe(413);
+    expect(
+      (
+        await fetch(`${attempts}/${largeAttemptId}/submit`, {
+          method: "POST",
+          headers: headers(0),
+          body: JSON.stringify({ revision: 1, answers: largeAnswers }),
+        })
+      ).status,
+    ).toBe(200);
+    const largeRatings = Object.fromEntries(
+      large.exercises.map((exercise: { id: string }) => [exercise.id, "met"]),
+    );
+    expect(
+      (
+        await fetch(`${attempts}/${largeAttemptId}/assessments`, {
+          method: "POST",
+          headers: headers(0),
+          body: JSON.stringify({ ratings: largeRatings }),
+        })
+      ).status,
+    ).toBe(200);
+    const completedLargeAttempt = await root.collection("attempts").doc(largeAttemptId).get();
+    expect(Buffer.byteLength(JSON.stringify(completedLargeAttempt.data()))).toBeLessThanOrEqual(
+      512 * 1024,
+    );
     // Force identical timestamps and sub-millisecond differences to verify both ordering components.
     const seed = first.data()!;
     for (const [id, nanos] of [
@@ -723,6 +748,315 @@ describe("authenticated API boundary", () => {
     await root.collection("packs").doc("orphan-pack").create({ contentHash: "bad" });
     expect((await post(0, JSON.stringify(orphanPack))).status).toBe(500);
     expect((await root.collection("packKeys").doc("orphan-pack").get()).exists).toBe(false);
+    const reviewId = "66666666-6666-4666-8666-666666666666";
+    const startReview = await fetch(attempts, {
+      method: "POST",
+      headers: headers(0),
+      body: JSON.stringify({ attemptId: reviewId, packId: fixture.id }),
+    });
+    expect(startReview.status).toBe(201);
+    const reviewUrl = `${attempts}/${reviewId}`;
+    const answers = {
+      "noni-choice": { choiceId: "noni" },
+      "prepare-blank": { text: "  おきます  " },
+      "reading-short": { text: "やくそく" },
+      "habit-short": { text: "習慣" },
+      "contrast-review": { text: "contrast" },
+    };
+    const submit = (body: object, index = 0) =>
+      fetch(`${reviewUrl}/submit`, {
+        method: "POST",
+        headers: headers(index),
+        body: JSON.stringify(body),
+      });
+    const assess = (body: object, index = 0) =>
+      fetch(`${reviewUrl}/assessments`, {
+        method: "POST",
+        headers: headers(index),
+        body: JSON.stringify(body),
+      });
+    expect((await assess({ ratings: {} })).status).toBe(409);
+    expect((await submit({ revision: 0, answers: {} })).status).toBe(422);
+    expect((await submit({ revision: 1, answers })).status).toBe(409);
+    expect((await submit({ revision: 0, answers, uid: "forged" })).status).toBe(422);
+    for (const field of [
+      "grade",
+      "score",
+      "correct",
+      "key",
+      "explanation",
+      "updatedAt",
+      "status",
+    ]) {
+      expect((await submit({ revision: 0, answers, [field]: "forged" })).status).toBe(422);
+    }
+    for (const invalidAnswers of [
+      { ...answers, "habit-short": { text: "   " } },
+      { ...answers, unknown: { text: "x" } },
+      { ...answers, "noni-choice": { text: "noni" } },
+      { ...answers, "habit-short": { text: "x", score: 1 } },
+    ])
+      expect((await submit({ revision: 0, answers: invalidAnswers })).status).toBe(422);
+    expect((await submit({ revision: 0, answers }, 1)).status).toBe(404);
+    const concurrentSubmissions = await Promise.all([
+      submit({ revision: 0, answers }),
+      submit({ revision: 0, answers }),
+    ]);
+    expect(concurrentSubmissions.map((response) => response.status)).toEqual([200, 200]);
+    const review = await concurrentSubmissions[0].json();
+    expect(review.status).toBe("awaiting_self_review");
+    expect(review.revision).toBe(1);
+    expect(review.results["noni-choice"].grade).toEqual({
+      kind: "objective",
+      correct: true,
+      score: 1,
+    });
+    expect(review.results["prepare-blank"].grade).toEqual({
+      kind: "objective",
+      correct: true,
+      score: 1,
+    });
+    expect(review.results["reading-short"].grade).toEqual({
+      kind: "objective",
+      correct: true,
+      score: 1,
+    });
+    expect(review.results["habit-short"].grade).toEqual({
+      kind: "self",
+      rating: null,
+      score: null,
+    });
+    expect(review.results["contrast-review"].grade).toEqual({
+      kind: "self",
+      rating: null,
+      score: null,
+    });
+    expect(review.feedback["habit-short"].modelAnswer).toBeTruthy();
+    expect(review).not.toHaveProperty("submissionHash");
+    expect(review).not.toHaveProperty("assessmentHash");
+    const submittedDocument = (await root.collection("attempts").doc(reviewId).get()).data();
+    expect(JSON.stringify(submittedDocument)).not.toMatch(
+      /explanation|acceptedAnswers|modelAnswer|rubric|prompt/,
+    );
+    expect(submittedDocument?.submissionHash).toMatch(/^[0-9a-f]{64}$/);
+    const retryReview = await (await submit({ revision: 0, answers })).json();
+    expect(retryReview.revision).toBe(1);
+    expect(retryReview.submittedAt).toBe(review.submittedAt);
+    expect(retryReview.updatedAt).toBe(review.updatedAt);
+    expect(retryReview.results).toEqual(review.results);
+    const reorderedAnswers = Object.fromEntries(Object.entries(answers).reverse());
+    expect((await (await submit({ revision: 0, answers: reorderedAnswers })).json()).revision).toBe(
+      1,
+    );
+    expect(
+      (await submit({ revision: 0, answers: { ...answers, "habit-short": { text: "different" } } }))
+        .status,
+    ).toBe(409);
+    expect(
+      (
+        await fetch(reviewUrl, {
+          method: "PATCH",
+          headers: headers(0),
+          body: JSON.stringify({ revision: 1, answers }),
+        })
+      ).status,
+    ).toBe(409);
+    for (const ratings of [
+      {},
+      { "habit-short": "met" },
+      { "habit-short": "met", "contrast-review": "partial", "noni-choice": "met" },
+      { "habit-short": "bad", "contrast-review": "met" },
+    ])
+      expect((await assess({ ratings })).status).toBe(422);
+    const ratings = { "habit-short": "met", "contrast-review": "partial" };
+    expect((await assess({ ratings, uid: "forged" })).status).toBe(422);
+    const assessed = await Promise.all([assess({ ratings }), assess({ ratings })]);
+    expect(assessed.map((response) => response.status)).toEqual([200, 200]);
+    const completed = await assessed[0].json();
+    expect(completed.status).toBe("completed");
+    expect(completed.revision).toBe(2);
+    expect(completed.results["habit-short"].grade).toEqual({
+      kind: "self",
+      rating: "met",
+      score: 1,
+    });
+    expect(completed.results["contrast-review"].grade).toEqual({
+      kind: "self",
+      rating: "partial",
+      score: 0.5,
+    });
+    const retriedAssessment = await (await assess({ ratings })).json();
+    expect(retriedAssessment.completedAt).toBe(completed.completedAt);
+    expect(retriedAssessment.updatedAt).toBe(completed.updatedAt);
+    expect(retriedAssessment.revision).toBe(completed.revision);
+    expect(retriedAssessment.results).toEqual(completed.results);
+    expect(
+      (
+        await (
+          await assess({ ratings: Object.fromEntries(Object.entries(ratings).reverse()) })
+        ).json()
+      ).revision,
+    ).toBe(2);
+    const retriedAfterCompletion = await (await submit({ revision: 0, answers })).json();
+    expect(retriedAfterCompletion.status).toBe("completed");
+    expect(retriedAfterCompletion.revision).toBe(completed.revision);
+    expect(retriedAfterCompletion.submittedAt).toBe(completed.submittedAt);
+    const retriedStartReview = await (
+      await fetch(attempts, {
+        method: "POST",
+        headers: headers(0),
+        body: JSON.stringify({ attemptId: reviewId, packId: fixture.id }),
+      })
+    ).json();
+    expect(retriedStartReview.feedback).toEqual(completed.feedback);
+    expect(retriedStartReview).not.toHaveProperty("assessmentHash");
+    expect((await assess({ ratings: { ...ratings, "habit-short": "not_yet" } })).status).toBe(409);
+    expect((await (await fetch(reviewUrl, { headers: headers(0) })).json()).results).toEqual(
+      completed.results,
+    );
+    for (const [kind, rawSelected] of [
+      ["objective", fixture.exercises.slice(0, 3)],
+      ["self", fixture.exercises.slice(3)],
+    ] as const) {
+      const selected = structuredClone(rawSelected);
+      if (kind === "objective") selected[1].answer.acceptedAnswers = ["ＡＢＣ", "Second Option"];
+      const skillIds = new Set(
+        selected.flatMap((exercise: { skillIds: string[] }) => exercise.skillIds),
+      );
+      const pack = {
+        ...fixture,
+        id: `m5-${kind}`,
+        exercises: selected,
+        skills: fixture.skills.filter((skill: { id: string }) => skillIds.has(skill.id)),
+      };
+      expect((await post(0, JSON.stringify(pack))).status).toBe(201);
+      const id =
+        kind === "objective"
+          ? "77777777-7777-4777-8777-777777777777"
+          : "88888888-8888-4888-8888-888888888888";
+      expect(
+        (
+          await fetch(attempts, {
+            method: "POST",
+            headers: headers(0),
+            body: JSON.stringify({ attemptId: id, packId: pack.id }),
+          })
+        ).status,
+      ).toBe(201);
+      const selectedAnswers = Object.fromEntries(
+        selected.map((exercise: { id: string }) => [
+          exercise.id,
+          answers[exercise.id as keyof typeof answers],
+        ]),
+      );
+      if (kind === "objective") {
+        selectedAnswers["noni-choice"] = { choiceId: "node" };
+        selectedAnswers["prepare-blank"] = { text: "  SECOND\u3000OPTION  " };
+        selectedAnswers["reading-short"] = { text: "やくそく!" };
+      }
+      const response = await fetch(`${attempts}/${id}/submit`, {
+        method: "POST",
+        headers: headers(0),
+        body: JSON.stringify({ revision: 0, answers: selectedAnswers }),
+      });
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      expect(result.status).toBe(kind === "objective" ? "completed" : "awaiting_self_review");
+      if (kind === "objective") {
+        expect(result.completedAt).toBe(result.submittedAt);
+        expect(result.results["noni-choice"].grade.correct).toBe(false);
+        expect(result.results["prepare-blank"].grade.correct).toBe(true);
+        expect(result.results["reading-short"].grade.correct).toBe(false);
+      } else {
+        const concurrentRatings = [ratings, { ...ratings, "habit-short": "not_yet" }].map(
+          (snapshot) =>
+            fetch(`${attempts}/${id}/assessments`, {
+              method: "POST",
+              headers: headers(0),
+              body: JSON.stringify({ ratings: snapshot }),
+            }),
+        );
+        expect(
+          (await Promise.all(concurrentRatings)).map((response) => response.status).sort(),
+        ).toEqual([200, 409]);
+        expect(
+          (await (await fetch(`${attempts}/${id}`, { headers: headers(0) })).json()).revision,
+        ).toBe(2);
+      }
+    }
+    const raceId = "99999999-9999-4999-8999-999999999999";
+    expect(
+      (
+        await fetch(attempts, {
+          method: "POST",
+          headers: headers(0),
+          body: JSON.stringify({ attemptId: raceId, packId: fixture.id }),
+        })
+      ).status,
+    ).toBe(201);
+    const raceUrl = `${attempts}/${raceId}`;
+    const raceSave = fetch(raceUrl, {
+      method: "PATCH",
+      headers: headers(0),
+      body: JSON.stringify({ revision: 0, answers }),
+    });
+    const raceSubmit = fetch(`${raceUrl}/submit`, {
+      method: "POST",
+      headers: headers(0),
+      body: JSON.stringify({ revision: 0, answers }),
+    });
+    expect(
+      (await Promise.all([raceSave, raceSubmit])).map((response) => response.status).sort(),
+    ).toEqual([200, 409]);
+    const raceAttempt = await (await fetch(raceUrl, { headers: headers(0) })).json();
+    expect(raceAttempt.revision).toBe(1);
+    const mismatchId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    expect(
+      (
+        await fetch(attempts, {
+          method: "POST",
+          headers: headers(0),
+          body: JSON.stringify({ attemptId: mismatchId, packId: fixture.id }),
+        })
+      ).status,
+    ).toBe(201);
+    const different = { ...answers, "reading-short": { text: "やくそく!" } };
+    const racePayloads = [answers, different].map((snapshot) =>
+      fetch(`${attempts}/${mismatchId}/submit`, {
+        method: "POST",
+        headers: headers(0),
+        body: JSON.stringify({ revision: 0, answers: snapshot }),
+      }),
+    );
+    expect((await Promise.all(racePayloads)).map((response) => response.status).sort()).toEqual([
+      200, 409,
+    ]);
+    const brokenPack = { ...fixture, id: "m5-broken-key" };
+    expect((await post(0, JSON.stringify(brokenPack))).status).toBe(201);
+    const brokenId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    expect(
+      (
+        await fetch(attempts, {
+          method: "POST",
+          headers: headers(0),
+          body: JSON.stringify({ attemptId: brokenId, packId: brokenPack.id }),
+        })
+      ).status,
+    ).toBe(201);
+    const brokenKeyRef = root.collection("packKeys").doc(brokenPack.id);
+    const brokenKeys = (await brokenKeyRef.get()).get("keys");
+    brokenKeys["prepare-blank"] = { explanation: "private-key-sentinel" };
+    await brokenKeyRef.update({ keys: brokenKeys });
+    const failedSubmit = await fetch(`${attempts}/${brokenId}/submit`, {
+      method: "POST",
+      headers: headers(0),
+      body: JSON.stringify({ revision: 0, answers }),
+    });
+    expect(failedSubmit.status).toBe(500);
+    const failedBody = await failedSubmit.text();
+    expect(failedBody).not.toContain("private-key-sentinel");
+    expect(failedBody).not.toContain(tokens[0]);
+    expect((await root.collection("attempts").doc(brokenId).get()).get("revision")).toBe(0);
     for (const uid of users.slice(0, 2).map((u) => u.uid))
       await db.recursiveDelete(db.collection("users").doc(uid));
   }, 60000);

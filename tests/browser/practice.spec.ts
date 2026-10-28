@@ -110,6 +110,29 @@ export default function DemoSignIn() { return <main><button onClick={async () =>
       body: readFileSync("examples/learning-pack.v1.json", "utf8"),
     });
     expect(imported.status).toBe(201);
+    if (uid === users[0]) {
+      const original = JSON.parse(readFileSync("examples/learning-pack.v1.json", "utf8"));
+      const selected = original.exercises.slice(0, 3);
+      const used = new Set(
+        selected.flatMap((exercise: { skillIds: string[] }) => exercise.skillIds),
+      );
+      const objective = {
+        ...original,
+        id: "m5-browser-objective",
+        title: "Objective only fixture",
+        exercises: selected,
+        skills: original.skills.filter((skill: { id: string }) => used.has(skill.id)),
+      };
+      expect(
+        (
+          await fetch(`${origin}/api/packs/import`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${idToken}`, "Content-Type": "application/json" },
+            body: JSON.stringify(objective),
+          })
+        ).status,
+      ).toBe(201);
+    }
   }
 });
 
@@ -196,7 +219,7 @@ test("practice, saved resume, failure, conflict and account isolation", async ({
   await expect(page.locator("textarea").nth(1)).toHaveValue("やくそく");
   await expect(page.locator("textarea").nth(2)).toHaveValue("毎日練習します");
   await expect(page.locator("textarea").nth(3)).toHaveValue("contrast and reason");
-  await expect(page.getByRole("button", { name: /submit|grade/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /grade/i })).toHaveCount(0);
 
   await page.route("**/api/attempts/*", async (route) => {
     if (route.request().method() === "PATCH") {
@@ -378,4 +401,120 @@ test("acknowledged answers survive sign-out and sign-in", async ({ page }) => {
   await signIn(page, "A");
   await page.goto(`${origin}/history/${attemptId}`);
   await expect(page.locator("textarea").nth(0)).toHaveValue("durable answer");
+});
+
+test("submit waits for save, retries lost responses, and persists review", async ({ page }) => {
+  await signIn(page, "A");
+  await page.goto(`${origin}/practice/jlpt-n3-20261026-01`);
+  await page.getByRole("button", { name: "Start new attempt" }).click();
+  await page.getByLabel("のに", { exact: true }).check();
+  await page.locator("textarea").nth(0).fill("おきます");
+  await page.locator("textarea").nth(1).fill("やくそく");
+  await page.locator("textarea").nth(2).fill("毎日勉強します");
+  await page.locator("textarea").nth(3).fill("contrast and reason");
+  const id = new URL(page.url()).searchParams.get("start");
+  let releaseSave!: () => void;
+  const held = new Promise<void>((resolveHeld) => {
+    releaseSave = resolveHeld;
+  });
+  let firstSave = true;
+  await page.route("**/api/attempts/*", async (route) => {
+    if (route.request().method() === "PATCH" && firstSave) {
+      firstSave = false;
+      const response = await route.fetch();
+      await held;
+      await route.fulfill({ response });
+    } else await route.continue();
+  });
+  let submitCount = 0;
+  await page.route("**/submit", async (route) => {
+    submitCount++;
+    if (submitCount === 1) {
+      await route.fetch();
+      await route.abort();
+    } else await route.continue();
+  });
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByRole("status")).toHaveText("Saving…");
+  await page.locator("textarea").nth(2).fill("jawaban terbaru saat menyimpan");
+  await page.getByRole("button", { name: "Submit answers" }).click();
+  await expect(page.locator("textarea").first()).toBeDisabled();
+  releaseSave();
+  await expect(page.getByText(/Submission could not be confirmed/)).toBeVisible();
+  await page.getByRole("button", { name: "Retry submission" }).click();
+  await expect(page.getByRole("heading", { name: "Results and self review" })).toBeVisible();
+  await expect(page.getByText("Your answer: jawaban terbaru saat menyimpan")).toBeVisible();
+  expect(submitCount).toBe(2);
+  await expect(page.getByText("Objective result: Correct (1/1)")).toHaveCount(3);
+  await expect(page.getByText("Self assessment: Pending")).toHaveCount(2);
+  await page.goto(`${origin}/history/${id}`);
+  await page.reload();
+  await expect(page.getByText("Self assessment: Pending")).toHaveCount(2);
+  const ratingFields = page.getByRole("group", { name: "Rate your answer" });
+  await ratingFields.nth(0).getByLabel("met", { exact: true }).check();
+  await ratingFields.nth(1).getByLabel("partial", { exact: true }).check();
+  let assessmentCount = 0;
+  await page.route("**/assessments", async (route) => {
+    assessmentCount++;
+    if (assessmentCount === 1) {
+      await route.fetch();
+      await route.abort();
+    } else await route.continue();
+  });
+  await page.getByRole("button", { name: "Complete self review" }).click();
+  await expect(page.getByText(/Could not save ratings/)).toBeVisible();
+  await page.getByRole("button", { name: "Retry ratings" }).click();
+  await expect(page.getByRole("heading", { name: "Completed review" })).toBeVisible();
+  expect(assessmentCount).toBe(2);
+  await page.goto(`${origin}/history/${id}`);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Completed review" })).toBeVisible();
+  await expect(page.getByText("Self assessment: met", { exact: true })).toBeVisible();
+  await expect(page.getByText("Self assessment: partial", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Complete self review" })).toHaveCount(0);
+  await page.unroute("**/api/attempts/*");
+  let releaseReview!: () => void;
+  let reviewStarted!: () => void;
+  const reviewHeld = new Promise<void>((resolveHeld) => {
+    releaseReview = resolveHeld;
+  });
+  const reviewSeen = new Promise<void>((resolveSeen) => {
+    reviewStarted = resolveSeen;
+  });
+  await page.route("**/api/attempts/*", async (route) => {
+    if (route.request().method() === "GET") {
+      const response = await route.fetch();
+      reviewStarted();
+      await reviewHeld;
+      await route.fulfill({ response }).catch(() => {});
+    } else await route.continue();
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await reviewSeen;
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page.getByRole("heading", { name: "Sign in to continue" })).toBeVisible();
+  releaseReview();
+  await page.unroute("**/api/attempts/*");
+  await signIn(page, "B");
+  await page.goto(`${origin}/history/${id}`);
+  await expect(page.getByText("Could not load attempt.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Completed review" })).toHaveCount(0);
+});
+
+test("objective-only submission completes without ratings", async ({ page }) => {
+  await signIn(page, "A");
+  await page.goto(`${origin}/practice/m5-browser-objective`);
+  await page.getByRole("button", { name: "Start new attempt" }).click();
+  await page.getByLabel("のに", { exact: true }).check();
+  await page.locator("textarea").nth(0).fill("おきます");
+  await page.locator("textarea").nth(1).fill("やくそく");
+  const originalId = new URL(page.url()).searchParams.get("start");
+  await page.getByRole("button", { name: "Submit answers" }).click();
+  await expect(page.getByRole("heading", { name: "Completed review" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Complete self review" })).toHaveCount(0);
+  await page.getByRole("link", { name: "Start a new attempt" }).click();
+  await page.getByRole("button", { name: "Start new attempt" }).click();
+  expect(new URL(page.url()).searchParams.get("start")).not.toBe(originalId);
+  await page.goto(`${origin}/history/${originalId}`);
+  await expect(page.getByRole("heading", { name: "Completed review" })).toBeVisible();
 });

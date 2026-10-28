@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { learnerPack } from "@/features/content/projection";
-import { learningPackSchema } from "@/features/content/schema";
+import { learningPackSchema, normalizeAnswer } from "@/features/content/schema";
 import {
   attemptIdSchema,
   draftSchema,
   startSchema,
   validateAnswers,
+  validateCompleteAnswers,
+  matchesAccepted,
 } from "@/features/practice/answers";
 
 const pack = learnerPack(
@@ -37,6 +39,16 @@ describe("draft answers", () => {
       validateAnswers(draftSchema.parse({ revision: 0, answers }).answers, pack.exercises),
     ).toBe(true);
     expect(validateAnswers({}, pack.exercises)).toBe(true);
+    expect(validateCompleteAnswers(answers, pack.exercises)).toBe(false);
+    expect(
+      validateCompleteAnswers({ ...answers, "prepare-blank": { text: "answer" } }, pack.exercises),
+    ).toBe(true);
+  });
+  it("normalizes NFKC, Unicode whitespace and case but preserves punctuation", () => {
+    expect(normalizeAnswer("  ＡＢＣ\u3000\tＤ  ")).toBe("abc d");
+    expect(normalizeAnswer("answer!")).not.toBe(normalizeAnswer("answer"));
+    expect(matchesAccepted("  ＡＢＣ\u3000Ｄ  ", ["other", "abc d"])).toBe(true);
+    expect(matchesAccepted("abc d!", ["abc d", "other"])).toBe(false);
   });
   it("rejects unknown exercises, choices and shapes", () => {
     expect(validateAnswers({ unknown: { text: "x" } }, pack.exercises)).toBe(false);

@@ -8,9 +8,10 @@ import type { learnerPack } from "@/features/content/projection";
 import type { Answers } from "./answers";
 import { attemptIdPattern } from "./ids";
 import { request } from "./request";
+import { Review, type ReviewAttempt } from "./review";
 
 type Pack = ReturnType<typeof learnerPack>;
-type Draft = { id: string; packId: string; status: string; revision: number; answers: Answers };
+type Draft = ReviewAttempt;
 type SaveStatus = "saved" | "unsaved" | "saving" | "failed" | "conflict";
 const equal = (a: Answers, b: Answers) =>
   JSON.stringify(Object.entries(a).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0))) ===
@@ -26,6 +27,8 @@ export function PracticeSession({ packId, attemptId }: { packId?: string; attemp
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [starting, setStarting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [pendingSubmit, setPendingSubmit] = useState(false);
   const [attemptedStart, setAttemptedStart] = useState(false);
   const [reload, setReload] = useState(0);
   const uid = user?.uid;
@@ -38,6 +41,9 @@ export function PracticeSession({ packId, attemptId }: { packId?: string; attemp
   const acknowledged = useRef<Answers>({});
   const revision = useRef(0);
   const inFlight = useRef(false);
+  const saveDone = useRef<Promise<void> | null>(null);
+  const submittingRef = useRef(false);
+  const submission = useRef<{ revision: number; answers: Answers } | null>(null);
   const uncertain = useRef<{ revision: number; answers: Answers } | null>(null);
   const statusRef = useRef<SaveStatus>("saved");
   const setSaveStatus = (value: SaveStatus) => {
@@ -67,7 +73,6 @@ export function PracticeSession({ packId, attemptId }: { packId?: string; attemp
           );
           if (!response.ok) throw new Error("Could not load attempt.");
           existing = (await response.json()) as Draft;
-          if (existing.status !== "in_progress") throw new Error("This attempt is not a draft.");
         }
         const id = existing?.packId ?? packId;
         if (!id) throw new Error("Pack not found.");
@@ -188,7 +193,6 @@ export function PracticeSession({ packId, attemptId }: { packId?: string; attemp
       if (!response.ok) throw new Error("Could not start practice. Retry to use the same attempt.");
       const result = (await response.json()) as Draft;
       if (active.signal.aborted) return;
-      if (result.status !== "in_progress") throw new Error("Attempt is not a draft.");
       current.current = result.answers;
       acknowledged.current = result.answers;
       revision.current = result.revision;
@@ -203,17 +207,22 @@ export function PracticeSession({ packId, attemptId }: { packId?: string; attemp
     }
   }
 
-  async function save() {
+  async function save(forSubmit = false) {
     if (
       !user ||
       !draft ||
       !controller.current ||
       inFlight.current ||
+      (submittingRef.current && !forSubmit) ||
       statusRef.current === "conflict"
     )
       return;
     const active = controller.current;
     inFlight.current = true;
+    let finishSave!: () => void;
+    saveDone.current = new Promise<void>((resolve) => {
+      finishSave = resolve;
+    });
     setSaveStatus("saving");
     const reconcile = async () => {
       const pending = uncertain.current!;
@@ -290,11 +299,119 @@ export function PracticeSession({ packId, attemptId }: { packId?: string; attemp
       }
     } finally {
       inFlight.current = false;
+      finishSave();
+      saveDone.current = null;
+    }
+  }
+
+  async function submit() {
+    if (
+      !user ||
+      !draft ||
+      !pack ||
+      !controller.current ||
+      submittingRef.current ||
+      statusRef.current === "conflict"
+    )
+      return;
+    const active = controller.current;
+    if (
+      !submission.current &&
+      !pack.exercises.every((exercise) => {
+        const answer = current.current[exercise.id];
+        return (
+          answer &&
+          ("text" in answer
+            ? answer.text.trim().length > 0
+            : exercise.choices?.some((choice) => choice.id === answer.choiceId))
+        );
+      })
+    ) {
+      setError("Answer every question before submitting.");
+      return;
+    }
+    submittingRef.current = true;
+    setSubmitting(true);
+    setError("");
+    try {
+      if (!submission.current) {
+        if (inFlight.current) await saveDone.current;
+        if (active.signal.aborted) return;
+        const saveBlocked = () =>
+          statusRef.current === "failed" || statusRef.current === "conflict";
+        if (saveBlocked()) {
+          setError("Resolve the draft save before submitting.");
+          return;
+        }
+        if (statusRef.current !== "saved" || !equal(current.current, acknowledged.current))
+          await save(true);
+        if (active.signal.aborted) return;
+        if (statusRef.current !== "saved" || !equal(current.current, acknowledged.current)) {
+          setError("The draft was not saved. Resolve the save before submitting.");
+          return;
+        }
+        submission.current = { revision: revision.current, answers: current.current };
+        setPendingSubmit(true);
+      }
+      const sent = submission.current;
+      setSaveStatus("saving");
+      const response = await request(
+        user,
+        active.signal,
+        `/api/attempts/${encodeURIComponent(draft.id)}/submit`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(sent),
+        },
+      );
+      if (response.status === 409) {
+        const latestResponse = await request(
+          user,
+          active.signal,
+          `/api/attempts/${encodeURIComponent(draft.id)}`,
+        );
+        if (!latestResponse.ok) throw new Error("Could not recover submission.");
+        const latest = (await latestResponse.json()) as Draft;
+        if (active.signal.aborted) return;
+        if (latest.status !== "in_progress" && equal(latest.answers, sent.answers)) {
+          setDraft(latest);
+          setSaveStatus("saved");
+        } else {
+          setServerDraft(latest);
+          setSaveStatus("conflict");
+        }
+        submission.current = null;
+        setPendingSubmit(false);
+        return;
+      }
+      if (response.status === 422) {
+        submission.current = null;
+        setPendingSubmit(false);
+        setSaveStatus("saved");
+        setError("Check that every answer is valid before submitting.");
+        return;
+      }
+      if (!response.ok) throw new Error("Submission failed.");
+      const result = (await response.json()) as Draft;
+      if (active.signal.aborted) return;
+      submission.current = null;
+      setPendingSubmit(false);
+      setDraft(result);
+      setSaveStatus("saved");
+    } catch {
+      if (!active.signal.aborted) {
+        setSaveStatus("failed");
+        setError("Submission could not be confirmed. Retry the same answers.");
+      }
+    } finally {
+      submittingRef.current = false;
+      if (!active.signal.aborted) setSubmitting(false);
     }
   }
 
   useEffect(() => {
-    if (status !== "unsaved" || !draft) return;
+    if (status !== "unsaved" || !draft || draft.status !== "in_progress") return;
     const timer = window.setTimeout(() => {
       void save();
     }, 1000);
@@ -304,6 +421,7 @@ export function PracticeSession({ packId, attemptId }: { packId?: string; attemp
   }, [answers, status, draft]);
 
   function change(id: string, answer: Answers[string]) {
+    if (submittingRef.current || submission.current) return;
     const next = { ...current.current, [id]: answer };
     current.current = next;
     setAnswers(next);
@@ -349,6 +467,16 @@ export function PracticeSession({ packId, attemptId }: { packId?: string; attemp
                 {starting ? "Starting…" : attemptedStart ? "Retry start" : "Start new attempt"}
               </Button>
             </div>
+          ) : draft.status !== "in_progress" ? (
+            <Review
+              attempt={draft}
+              pack={pack}
+              onDirtyChange={() => setSaveStatus("unsaved")}
+              onUpdate={(next) => {
+                setDraft(next);
+                if (next.status === "completed") setSaveStatus("saved");
+              }}
+            />
           ) : (
             <>
               <p role="status">
@@ -362,62 +490,81 @@ export function PracticeSession({ packId, attemptId }: { packId?: string; attemp
                         ? "This draft changed elsewhere. Choose how to recover below."
                         : "Unsaved changes"}
               </p>
-              <ol className="space-y-6">
-                {pack.exercises.map((exercise, i) => (
-                  <li key={exercise.id} className="rounded-lg border p-4">
-                    {exercise.type === "multiple_choice" ? (
-                      <fieldset>
-                        <legend className="mb-3 font-medium">
-                          {i + 1}. {exercise.prompt}
-                        </legend>
-                        <div className="space-y-2">
-                          {exercise.choices?.map((choice) => (
-                            <label key={choice.id} className="flex gap-2">
-                              <input
-                                type="radio"
-                                name={exercise.id}
-                                value={choice.id}
-                                checked={
-                                  "choiceId" in (answers[exercise.id] ?? {}) &&
-                                  (answers[exercise.id] as { choiceId: string }).choiceId ===
-                                    choice.id
-                                }
-                                onChange={() => change(exercise.id, { choiceId: choice.id })}
-                              />
-                              {choice.text}
-                            </label>
-                          ))}
-                        </div>
-                      </fieldset>
-                    ) : (
-                      <>
-                        <label className="mb-3 block font-medium" htmlFor={`answer-${exercise.id}`}>
-                          {i + 1}. {exercise.prompt.replace("{{blank}}", "＿＿")}
-                        </label>
-                        <textarea
-                          id={`answer-${exercise.id}`}
-                          className="w-full rounded-md border bg-background p-3 focus-visible:outline-2 focus-visible:outline-ring"
-                          rows={
-                            exercise.type === "self_review" || exercise.grading === "self" ? 4 : 2
-                          }
-                          maxLength={2000}
-                          value={
-                            "text" in (answers[exercise.id] ?? {})
-                              ? (answers[exercise.id] as { text: string }).text
-                              : ""
-                          }
-                          onChange={(event) => change(exercise.id, { text: event.target.value })}
-                        />
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ol>
+              <fieldset disabled={submitting || pendingSubmit}>
+                <legend className="sr-only">Practice answers</legend>
+                <ol className="space-y-6">
+                  {pack.exercises.map((exercise, i) => (
+                    <li key={exercise.id} className="rounded-lg border p-4">
+                      {exercise.type === "multiple_choice" ? (
+                        <fieldset>
+                          <legend className="mb-3 font-medium">
+                            {i + 1}. {exercise.prompt}
+                          </legend>
+                          <div className="space-y-2">
+                            {exercise.choices?.map((choice) => (
+                              <label key={choice.id} className="flex gap-2">
+                                <input
+                                  type="radio"
+                                  name={exercise.id}
+                                  value={choice.id}
+                                  checked={
+                                    "choiceId" in (answers[exercise.id] ?? {}) &&
+                                    (answers[exercise.id] as { choiceId: string }).choiceId ===
+                                      choice.id
+                                  }
+                                  onChange={() => change(exercise.id, { choiceId: choice.id })}
+                                />
+                                {choice.text}
+                              </label>
+                            ))}
+                          </div>
+                        </fieldset>
+                      ) : (
+                        <>
+                          <label
+                            className="mb-3 block font-medium"
+                            htmlFor={`answer-${exercise.id}`}
+                          >
+                            {i + 1}. {exercise.prompt.replace("{{blank}}", "＿＿")}
+                          </label>
+                          <textarea
+                            id={`answer-${exercise.id}`}
+                            className="w-full rounded-md border bg-background p-3 focus-visible:outline-2 focus-visible:outline-ring"
+                            rows={
+                              exercise.type === "self_review" || exercise.grading === "self" ? 4 : 2
+                            }
+                            maxLength={2000}
+                            value={
+                              "text" in (answers[exercise.id] ?? {})
+                                ? (answers[exercise.id] as { text: string }).text
+                                : ""
+                            }
+                            onChange={(event) => change(exercise.id, { text: event.target.value })}
+                          />
+                        </>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              </fieldset>
               <Button
-                disabled={status === "saving" || status === "conflict" || status === "saved"}
+                disabled={
+                  submitting ||
+                  pendingSubmit ||
+                  status === "saving" ||
+                  status === "conflict" ||
+                  status === "saved"
+                }
                 onClick={() => void save()}
               >
                 Save
+              </Button>
+              <Button
+                className="ml-3"
+                disabled={submitting || status === "conflict"}
+                onClick={() => void submit()}
+              >
+                {submitting ? "Submitting…" : pendingSubmit ? "Retry submission" : "Submit answers"}
               </Button>
               {serverDraft && status === "conflict" && (
                 <section

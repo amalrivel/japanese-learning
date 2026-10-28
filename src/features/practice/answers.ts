@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { idSchema } from "@/features/content/schema";
+import { idSchema, normalizeAnswer } from "@/features/content/schema";
 import type { learnerPack } from "@/features/content/projection";
 import { attemptIdPattern } from "./ids";
 
@@ -14,6 +14,13 @@ export const draftSchema = z.strictObject({
   answers: z.record(idSchema, answerSchema),
 });
 export type Answers = z.infer<typeof draftSchema>["answers"];
+export const assessmentSchema = z.strictObject({
+  ratings: z.record(idSchema, z.enum(["met", "partial", "not_yet"])),
+});
+export type Ratings = z.infer<typeof assessmentSchema>["ratings"];
+export function matchesAccepted(text: string, accepted: string[]) {
+  return accepted.some((value) => normalizeAnswer(value) === normalizeAnswer(text));
+}
 
 export function validateAnswers(
   answers: Answers,
@@ -29,4 +36,15 @@ export function validateAnswers(
       );
     return "text" in answer;
   });
+}
+
+export function validateCompleteAnswers(
+  answers: Answers,
+  exercises: ReturnType<typeof learnerPack>["exercises"],
+) {
+  return (
+    Object.keys(answers).length === exercises.length &&
+    validateAnswers(answers, exercises) &&
+    Object.values(answers).every((answer) => !("text" in answer) || answer.text.trim().length > 0)
+  );
 }
