@@ -3,6 +3,7 @@ import { ModeToggle } from "@/components/mode-toggle";
 const routes = [
   ["Practice", "/practice"],
   ["History", "/history"],
+  ["Progress", "/progress"],
   ["Import learning pack", "/import"],
   ["Teacher report", "/teacher/report"],
 ] as const;

@@ -22,10 +22,12 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 - Initialized Next.js App Router app with strict TypeScript; `@/*` maps to `src/*`.
 - Use npm only and retain `package-lock.json`. Existing scripts: `dev`, `build`,
-  `start`, `lint`. Test scripts are planned, not currently installed.
+  `start`, `lint`, `typecheck`, unit/integration/rules tests, and emulator/browser
+  suites. Node requirements and the tested version are in package.json and .nvmrc.
 - Reuse `src/components/ui` (shadcn Base UI, not Radix), Lucide icons, and
   `next-themes`. Theme tokens live in `src/app/globals.css`; `cn` is re-exported
-  by `src/lib/utils.ts`. Match nearby formatting; no formatter is configured.
+  by `src/lib/utils.ts`. Match nearby formatting; Prettier is available through
+  `format` and `format:check`.
 
 ## Target boundaries
 

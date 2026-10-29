@@ -1,6 +1,6 @@
 # Architecture
 
-Status: target design, not implemented. Contracts are authoritative in
+Status: architecture target with M1–M6 implemented; later milestones remain planned. Contracts are authoritative in
 [CONTENT_CONTRACT.md](CONTENT_CONTRACT.md); execution gates are in
 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 

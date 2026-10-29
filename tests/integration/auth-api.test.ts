@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { deleteApp, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { assertDemoEmulators } from "@/../tests/helpers/emulator";
+import { teacherContextSchema } from "@/features/analytics/teacher-schema";
 
 const projectId = "demo-learning-pwa";
 const users = [
@@ -1057,8 +1058,172 @@ describe("authenticated API boundary", () => {
     expect(failedBody).not.toContain("private-key-sentinel");
     expect(failedBody).not.toContain(tokens[0]);
     expect((await root.collection("attempts").doc(brokenId).get()).get("revision")).toBe(0);
+    const beforeReport = await root.collection("attempts").doc(reviewId).get();
+    const progressResponse = await fetch("http://127.0.0.1:3100/api/progress", {
+      headers: headers(0),
+    });
+    const reportResponse = await fetch("http://127.0.0.1:3100/api/teacher/context", {
+      headers: headers(0),
+    });
+    expect(progressResponse.status).toBe(200);
+    expect(reportResponse.status).toBe(200);
+    expect(reportResponse.headers.get("cache-control")).toBe("private, no-store");
+    expect(reportResponse.headers.get("vary")).toContain("Authorization");
+    const progress = await progressResponse.json();
+    const report = await reportResponse.json();
+    expect(report.progress.totals).toEqual(progress.totals);
+    expect(report.progress.window).toEqual(progress.window);
+    expect(report.generatedAt).toBe(report.progress.generatedAt);
+    expect(
+      report.recentMistakes.some(
+        (item: { attemptId: string; exerciseId: string }) =>
+          item.attemptId === reviewId && item.exerciseId === "contrast-review",
+      ),
+    ).toBe(true);
+    expect(JSON.stringify(report)).not.toMatch(
+      /submissionHash|assessmentHash|private-key-sentinel|m2-approved-a@example/,
+    );
+    expect(
+      (await root.collection("attempts").doc(reviewId).get()).updateTime!.isEqual(
+        beforeReport.updateTime!,
+      ),
+    ).toBe(true);
+    expect((await fetch("http://127.0.0.1:3100/api/teacher/context")).status).toBe(401);
+    expect(
+      (await fetch("http://127.0.0.1:3100/api/progress", { headers: headers(2) })).status,
+    ).toBe(403);
+    const otherReport = await (
+      await fetch("http://127.0.0.1:3100/api/teacher/context", { headers: headers(1) })
+    ).json();
+    expect(JSON.stringify(otherReport)).not.toContain(reviewId);
     for (const uid of users.slice(0, 2).map((u) => u.uid))
       await db.recursiveDelete(db.collection("users").doc(uid));
+  }, 60000);
+
+  it("uses one deterministic completed window and bounded mistake samples", async () => {
+    assertDemoEmulators();
+    const fixture = JSON.parse(readFileSync("examples/learning-pack.v1.json", "utf8"));
+    fixture.id = "m6-window";
+    fixture.exercises[0].prompt = "p".repeat(501);
+    fixture.exercises[0].answer.explanation = "e".repeat(501);
+    const headers = { Authorization: `Bearer ${tokens[0]}`, "Content-Type": "application/json" };
+    expect(
+      (
+        await fetch("http://127.0.0.1:3100/api/packs/import", {
+          method: "POST",
+          headers,
+          body: JSON.stringify(fixture),
+        })
+      ).status,
+    ).toBe(201);
+    const db = getFirestore(adminApp);
+    const root = db.collection("users").doc(users[0].uid);
+    const pack = await root.collection("packs").doc(fixture.id).get();
+    const stamp = new Timestamp(1700000000, 123456000);
+    const id = (n: number) => `00000000-0000-4000-8000-${n.toString(16).padStart(12, "0")}`;
+    const batch = db.batch();
+    for (let n = 0; n <= 100; n++) {
+      batch.create(root.collection("attempts").doc(id(n)), {
+        id: id(n),
+        status: "completed",
+        completedAt: stamp,
+        packId: fixture.id,
+        packHash: pack.get("contentHash"),
+        subject: fixture.subject,
+        skills: [
+          { id: "grammar.contrast", label: n === 100 ? "Newest label" : "Old label" },
+          { id: "grammar.preparation", label: "Preparation" },
+        ],
+        answers: {
+          "noni-choice": { choiceId: "node" },
+          ...(n === 100 ? { "prepare-blank": { text: "界".repeat(501) } } : {}),
+        },
+        results: {
+          ...(n === 100
+            ? {
+                "prepare-blank": {
+                  skillIds: ["grammar.preparation"],
+                  type: "fill_blank",
+                  grade: { kind: "objective", correct: false, score: 0 },
+                },
+              }
+            : {}),
+          "noni-choice": {
+            skillIds: ["grammar.contrast"],
+            type: "multiple_choice",
+            grade: { kind: "objective", correct: false, score: 0 },
+          },
+        },
+      });
+    }
+    for (const [n, status, completedAt] of [
+      [101, "in_progress", stamp],
+      [102, "awaiting_self_review", stamp],
+      [103, "completed", new Timestamp(4102444800, 0)],
+    ] as const)
+      batch.create(root.collection("attempts").doc(id(n)), {
+        status,
+        completedAt,
+        answers: { private: { text: "draft-secret" } },
+      });
+    await batch.commit();
+    const before = await root.collection("attempts").get();
+    const beforeKeys = await root.collection("packKeys").doc(fixture.id).get();
+    const response = await fetch("http://127.0.0.1:3100/api/teacher/context", { headers });
+    expect(response.status).toBe(200);
+    const report = await response.json();
+    expect(teacherContextSchema.safeParse(report).success).toBe(true);
+    expect(report.progress.window).toEqual({
+      limit: 100,
+      attemptCount: 100,
+      hasEarlierAttempts: true,
+      oldestCompletedAt: stamp.toDate().toISOString(),
+    });
+    expect(report.progress.totals).toEqual({
+      exerciseCount: 101,
+      objectiveCount: 101,
+      objectiveCorrect: 0,
+      selfCount: 0,
+      selfMet: 0,
+      selfPartial: 0,
+      selfNotYet: 0,
+    });
+    expect(report.progress.skills[0]).toMatchObject({
+      label: "Newest label",
+      objectiveAccuracy: 0,
+      exerciseCount: 100,
+    });
+    expect(report.recentMistakes).toHaveLength(20);
+    expect(report.recentMistakes.map((item: { attemptId: string }) => item.attemptId)).toEqual([
+      id(100),
+      id(100),
+      ...Array.from({ length: 18 }, (_, i) => id(99 - i)),
+    ]);
+    expect(report.recentMistakes[0]).toMatchObject({
+      learnerAnswer: "ので",
+      prompt: "p".repeat(500),
+      explanation: "e".repeat(500),
+      textTruncated: true,
+    });
+    expect(report.recentMistakes[1]).toMatchObject({
+      exerciseId: "prepare-blank",
+      learnerAnswer: "界".repeat(500),
+      textTruncated: true,
+    });
+    expect(JSON.stringify(report)).not.toContain("draft-secret");
+    const after = await root.collection("attempts").get();
+    expect(after.docs.map((doc) => [doc.id, doc.updateTime?.toMillis()])).toEqual(
+      before.docs.map((doc) => [doc.id, doc.updateTime?.toMillis()]),
+    );
+    expect(
+      (await root.collection("packs").doc(fixture.id).get()).updateTime!.isEqual(pack.updateTime!),
+    ).toBe(true);
+    expect(
+      (await root.collection("packKeys").doc(fixture.id).get()).updateTime!.isEqual(
+        beforeKeys.updateTime!,
+      ),
+    ).toBe(true);
+    await db.recursiveDelete(root);
   }, 60000);
 
   it("fails safely when the server Firebase project is misconfigured", async () => {

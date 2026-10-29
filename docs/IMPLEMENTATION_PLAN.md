@@ -16,7 +16,7 @@ starter examples. Read [PRD](PRD.md), [architecture](ARCHITECTURE.md), and
 | M3 Validated import                             | Complete             | 2026-10-27: automated checks and demo browser flows pass; native file picker remains blocked by the browser extension setting; see M3 evidence below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | M4 Practice and draft persistence               | Complete             | 2026-10-28: draft APIs, practice/history UI, emulator and browser verification passed; see M4 evidence below. M5 may begin.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | M5 Grading and durable review                   | Complete             | 2026-10-28: deterministic grading, immutable submission/review, emulator and browser verification passed; see M5 evidence below. M6 may begin.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| M6 Progress and teacher export                  | Not started          | Depends on M5                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| M6 Progress and teacher export                  | Complete             | 2026-10-29: bounded progress, read-only teacher handoff, emulator and browser verification passed; see M6 evidence below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | M7 Full-loop verification and release readiness | Not started          | Depends on M6; hosted smoke checks need owner configuration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | M8 Installability                               | Deferred             | Optional only after M7; no offline sync                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
@@ -34,9 +34,9 @@ record it as incomplete; do not label the product release-ready or proceed to M8
 
 ## Verification tooling
 
-Current (2026-10-27): all M1/M2 scripts below are installed and verified. Browser
-E2E tooling remains planned for M7. The following describes the original setup
-sequence; its initial baseline scripts were `npm run dev`, `npm run lint`,
+Current (2026-10-29): unit, integration, rules, and browser tooling are installed;
+`test:browser:emulators` was introduced in M4. The following preserves the original
+setup plan and proposed M7 script names; its initial baseline scripts were `npm run dev`, `npm run lint`,
 `npm run build`, and `npm start`.
 Do not run an application initializer. Use existing lockfile and strict TypeScript.
 
@@ -470,6 +470,58 @@ the existing unit, HTTP/emulator, and browser tests. M6 remains unstarted.
 
 M5 is complete for its stated scope; M6 is eligible to begin and remains unstarted.
 
+## Audit follow-up (2026-10-29, Asia/Tokyo)
+
+The checkout started clean on main. Node 24.22.1/npm 11.19.1 and OpenJDK
+21.0.12.1 were present; no Node selector or CI workflow was found. README,
+AGENTS, and schema/architecture status text were stale; historical milestone
+records above are retained. No application behavior or dependency versions were
+changed, and M6 remains unstarted.
+
+`package.json` and the lockfile now require Node >=24.15.0 <25; `.nvmrc`
+selects the actually tested 24.22.1. Firebase Auth/Firestore require >=24.12.0,
+Admin requires >=22, and the locked re2/node-gyp build chain requires
+^22.22.2 || ^24.15.0 || >=26.0.0. Checking every locked engine relevant to
+Linux x64 found no mismatch at 24.15.0 or 24.22.1. Only 24.22.1 was executed;
+the lower bound is metadata-derived. The optional Windows ia32 sharp package
+has a different platform-specific engine and is not installed on this platform.
+Builds require devDependencies, including the shadcn stylesheet toolchain.
+
+Dependency review used registry metadata, `npm ls`, official release notes, and
+advisories on this date. Full audit exits 1 with eight affected package entries
+(three low, five moderate), representing **three unique advisories**, all in
+development dependency chains. Production-only audit exits 0 with no findings.
+
+| Advisory | Locked path and finding | Decision and next action |
+| --- | --- | --- |
+| [GHSA-8988-4f7v-96qf](https://github.com/advisories/GHSA-8988-4f7v-96qf) | firebase-tools 15.34.1 → @google-cloud/pubsub 5.3.1 → @opentelemetry/core 1.30.1; inbound baggage allocation | Patched core is 2.8.0, outside Pub/Sub's ^1.30.1 range. Await an upstream compatible parent release; do not force core 2 into the 1.x API. Keep emulator access on loopback and do not raise HTTP header limits. |
+| [GHSA-w5hq-g745-h8pq](https://github.com/advisories/GHSA-w5hq-g745-h8pq) | firebase-tools → gaxios 6.7.1 → uuid 9.0.1; caller-provided output-buffer bounds in v3/v5/v6 | Patched uuid 11.1.1 is outside gaxios's ^9.0.1 range. Await Firebase CLI's adoption of a patched gaxios/UUID chain; no major override or downgrade was applied. Application attempt IDs use crypto.randomUUID(). |
+| [GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4) | shadcn 4.22.1 → deepmerge 4.3.1, also via @shadcn/registry 0.2.0; returned-object prototype poisoning | No patched deepmerge release is listed. Retain the required shadcn/tailwind.css import; review trusted registries/configuration before running the CLI, and revisit when upstream removes or patches deepmerge. Moving it to devDependencies previously did not remediate this advisory. |
+
+Latest registry releases inspected: Firebase CLI 15.34.2 still depends on gaxios
+^6.7.0 and Pub/Sub ^5.2.0; shadcn 4.23.0 still depends on deepmerge ^4.3.1
+and registry 0.2.1. gaxios 6.7.1 and Pub/Sub 5.3.1 are already the latest in
+those major lines, and deepmerge's latest is 4.3.1. Thus no compatible update
+resolves these three advisories. The [Firebase release notes](https://github.com/firebase/firebase-tools/releases/tag/v15.34.2)
+and [shadcn release notes](https://github.com/shadcn-ui/ui/releases/tag/shadcn@4.23.0),
+plus [gaxios](https://github.com/googleapis/gaxios/blob/main/CHANGELOG.md),
+[Pub/Sub](https://github.com/googleapis/nodejs-pubsub/blob/main/CHANGELOG.md), and
+[deepmerge](https://github.com/TehShrike/deepmerge/blob/master/changelog.md)
+changelogs were reviewed. Unrelated updates were deferred. npm's suggested
+major downgrades and audit fix --force were not used.
+
+Verification: npm ls --depth=0, lint, typecheck, unit tests (21), emulator tests
+(9 HTTP + 3 rules), and browser emulator tests (5) passed on Node 24.22.1.
+All emulator work used demo-learning-pwa and isolated test servers; each process
+was awaited and shut down by its own harness. Full audit remains FAIL for the
+explicitly documented development risks, not a clean-audit claim. Production
+audit passed. Build passed outside the sandbox; final git diff --check passed.
+The final diff contains only runtime metadata and documentation, with no package
+version changes or application code changes.
+No real Google login, production indexes, native OS file dialog, or BFCache
+verification was performed. M6 has no new functional blocker from these changes,
+but the development-tooling risks remain open.
+
 ## M6 — Skill progress and read-only Teacher Report
 
 **Goal:** close the manual teacher feedback loop. **Prerequisite:** M5.
@@ -478,14 +530,14 @@ progress and existing teacher/context route, unit/integration tests.
 
 **Tasks:**
 
-- [ ] Aggregate exactly the documented latest-100 completed window, separating
+- [x] Aggregate exactly the documented latest-100 completed window, separating
       objective counts/accuracy from self ratings, with stable subject/skill IDs.
-- [ ] Build TeacherContext v1 from the same query; add at most 20 completed-work
+- [x] Build TeacherContext v1 from the same query; add at most 20 completed-work
       mistake samples, truncation markers, and static nextPackConstraints. No identity
       credentials, drafts, raw input instructions, or public sharing token.
-- [ ] Render owner-only report data after auth; add copy and JSON download via
+- [x] Render owner-only report data after auth; add copy and JSON download via
       platform APIs. Label window, truncation, untrusted content, and manual handoff.
-- [ ] Test zero data, all-self data, mixed subjects, multi-skill counting, repeated
+- [x] Test zero data, all-self data, mixed subjects, multi-skill counting, repeated
       attempts, label changes, 101+ completions, timestamp ties, incomplete sessions,
       truncation, two-user isolation, and exact report-schema validation.
 
@@ -496,6 +548,25 @@ a new-ID pack that validates and imports. Use a prepared second pack if live
 ChatGPT is unavailable; no live LLM dependency is a release gate.
 **Definition of Done:** all MVP capabilities exist, with completed-work-only
 teacher handoff; no automatic integration or public report introduced.
+
+### M6 evidence (2026-10-29)
+
+Implemented owner-scoped completed-attempt aggregation and TeacherContext v1,
+with progress and manual copy/download UI. The latest-100 window uses timestamp
+and document-ID ordering; report samples are capped and truncated as specified.
+The demo emulator tests cover 101 completions, timestamp ties, excluded incomplete
+and future work, isolation, headers, schema and unchanged document update times.
+The browser suite verifies copy and download, import of a prepared new-ID pack,
+and account switching while a report request is pending. The prepared pack verifies
+flow compatibility, not the quality of live model output.
+
+`npm ls --depth=0`, `git diff --check`, lint, typecheck, 25 unit tests,
+10 HTTP integration tests, 3 Firestore rules tests, 6 browser tests, the
+production build, and `npm audit --omit=dev` passed. Tests used demo emulators;
+no production data was accessed. Real Google login, production Firestore indexes,
+the native file picker, and BFCache remain unverified. The previously documented
+three unique development dependency advisories remain. M6 is complete; M7 is
+eligible but has not started.
 
 ## M7 — Full-loop security and release-readiness verification
 

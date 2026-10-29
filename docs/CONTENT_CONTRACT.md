@@ -1,6 +1,8 @@
 # Content, attempts, and teacher context — v1
 
-Status: normative target for implementation. No runtime schema is implemented yet.
+Status: normative contract. Runtime content and answer schemas are implemented in
+`src/features/content/schema.ts` and `src/features/practice/answers.ts`; the progress
+and teacher-context schemas are implemented in `src/features/analytics/teacher-schema.ts`.
 Implement strict Zod objects/discriminated unions and infer TypeScript types from
 them. [The complete example](../examples/learning-pack.v1.json) is the seed fixture.
 API paths/storage are defined in [ARCHITECTURE.md](ARCHITECTURE.md).

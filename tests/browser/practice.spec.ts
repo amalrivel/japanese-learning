@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { assertDemoEmulators } from "../helpers/emulator";
+import { teacherContextSchema } from "../../src/features/analytics/teacher-schema";
 
 const origin = "http://127.0.0.1:3100";
 const users = ["m4-browser-a", "m4-browser-b"];
@@ -517,4 +518,70 @@ test("objective-only submission completes without ratings", async ({ page }) => 
   expect(new URL(page.url()).searchParams.get("start")).not.toBe(originalId);
   await page.goto(`${origin}/history/${originalId}`);
   await expect(page.getByRole("heading", { name: "Completed review" })).toBeVisible();
+});
+
+test("progress and manual teacher handoff preserve account isolation", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin });
+  await signIn(page, "A");
+  await page.goto(`${origin}/practice/m5-browser-objective`);
+  await page.getByRole("button", { name: "Start new attempt" }).click();
+  await page.getByLabel("ので", { exact: true }).check();
+  await page.locator("textarea").nth(0).fill("wrong");
+  await page.locator("textarea").nth(1).fill("やくそく");
+  await page.getByRole("button", { name: "Submit answers" }).click();
+  await expect(page.getByRole("heading", { name: "Completed review" })).toBeVisible();
+  await page.goto(`${origin}/progress`);
+  await expect(page.getByText(/completed attempts, up to 100/)).toBeVisible();
+  await expect(page.getByText(/Objective:.*correct of/)).toBeVisible();
+  await page.goto(`${origin}/teacher/report`);
+  await expect(page.getByText("Recent mistakes are limited to 20 samples.")).toBeVisible();
+  await page.getByRole("button", { name: "Copy JSON" }).click();
+  await expect(page.getByText("JSON copied.")).toBeVisible();
+  const copied = JSON.parse(await page.evaluate(() => navigator.clipboard.readText()));
+  expect(teacherContextSchema.safeParse(copied).success).toBe(true);
+  expect(
+    copied.recentMistakes.some((item: { learnerAnswer: string }) => item.learnerAnswer === "ので"),
+  ).toBe(true);
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download JSON" }).click();
+  const download = await downloadPromise;
+  const downloaded = JSON.parse(readFileSync((await download.path())!, "utf8"));
+  expect(teacherContextSchema.safeParse(downloaded).success).toBe(true);
+  expect(downloaded).toEqual(copied);
+  const next = JSON.parse(readFileSync("examples/learning-pack.v1.json", "utf8"));
+  next.id = "m6-follow-up";
+  await page.goto(`${origin}/import`);
+  await page.locator("textarea").fill(JSON.stringify(next));
+  await page.getByRole("button", { name: "Preview" }).click();
+  await page.getByRole("button", { name: "Confirm import" }).click();
+  await expect(page.getByText("Pack imported successfully.")).toBeVisible();
+  await page.goto(`${origin}/teacher/report`);
+  await expect(page.getByText("Recent mistakes are limited to 20 samples.")).toBeVisible();
+  let releaseReport!: () => void;
+  let startedReport!: () => void;
+  const heldReport = new Promise<void>((resolveHeld) => {
+    releaseReport = resolveHeld;
+  });
+  const reportSeen = new Promise<void>((resolveSeen) => {
+    startedReport = resolveSeen;
+  });
+  await page.route("**/api/teacher/context", async (route) => {
+    const response = await route.fetch();
+    startedReport();
+    await heldReport;
+    await route.fulfill({ response }).catch(() => {});
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await reportSeen;
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page.getByRole("heading", { name: "Sign in to continue" })).toBeVisible();
+  releaseReport();
+  await page.unroute("**/api/teacher/context");
+  await signIn(page, "B");
+  await page.goto(`${origin}/teacher/report`);
+  await expect(page.getByText("No completed attempts yet.")).toBeVisible();
+  await expect(page.getByText("Answer: ので")).toHaveCount(0);
 });

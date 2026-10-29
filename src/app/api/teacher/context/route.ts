@@ -1,9 +1,8 @@
-import { apiError, methodNotAllowed, withAuthenticatedUser } from "@/lib/api/server";
+import { apiJson, methodNotAllowed, withAuthenticatedUser } from "@/lib/api/server";
+import { teacherContext } from "@/features/analytics/teacher.server";
 
 export function GET(request: Request) {
-  return withAuthenticatedUser(request, () =>
-    apiError(501, "NOT_IMPLEMENTED", "This endpoint is not available yet."),
-  );
+  return withAuthenticatedUser(request, async (uid) => apiJson(await teacherContext(uid)));
 }
 
 export function POST() {
