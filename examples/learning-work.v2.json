@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 2,
+  "kind": "learning-work",
+  "id": "11111111-1111-4111-8111-111111111111",
+  "packId": "jlpt-n3-20261101",
+  "revision": 3,
+  "status": "in_progress",
+  "currentExerciseId": "contrast-blank",
+  "answers": {
+    "contrast-choice": {
+      "response": {
+        "choiceId": "noni"
+      },
+      "comment": "Saya memilih ini karena ada pertentangan, tetapi masih ragu apakah ので juga mungkin."
+    },
+    "contrast-blank": {
+      "response": null,
+      "comment": "Belum sempat menjawab karena sudah sampai stasiun."
+    },
+    "commuter-diary": {
+      "response": {
+        "text": "今日は電車で日本語を勉強しました。疲れているのに、少し練習しました。"
+      },
+      "comment": "Saya ingin tahu apakah urutan ceritanya alami."
+    }
+  },
+  "reflection": {
+    "understood": ["のに menghubungkan hasil yang di luar dugaan."],
+    "unclear": ["Kapan ので lebih alami daripada から?"],
+    "nextStep": "Beri contoh perbedaan kedua ungkapan itu pada sesi berikutnya."
+  },
+  "updatedAt": "2026-11-01T00:10:00.000Z"
+}

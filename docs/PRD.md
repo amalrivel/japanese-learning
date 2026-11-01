@@ -1,70 +1,96 @@
-# Personalized Learning PWA — MVP
+# Personalized Learning — arah produk v2
 
-Status: approved task translated into a proposed implementation blueprint; no MVP
-features are claimed complete. Working title; first content is Japanese JLPT N3.
-Implementation order and evidence belong in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+Status (2026-11-01): kebutuhan pemilik menjadi arah pengembangan aktif. Website
+masih menjalankan v1. Fondasi skema v2 tersedia; integrasi API, penyimpanan, dan UI
+v2 belum dibangun. Lihat [rencana implementasi](IMPLEMENTATION_PLAN.md) untuk bukti
+setiap tahap, [arsitektur](ARCHITECTURE.md) untuk batas sistem, dan
+[kontrak data](CONTENT_CONTRACT.md) untuk format yang sah.
 
-## Goal and user
+## Tujuan dan pengguna
 
-Give one learner a dependable loop from externally authored learning material to
-practice, results, and a portable teacher summary. The engine must work with other
-subjects: Japanese-specific behavior belongs in pack content, not grading code.
-Each authenticated Firebase UID owns independent data. Initial access is limited
-to an owner-configured UID allowlist, without an administration interface.
+Aplikasi pribadi untuk membantu satu pembelajar yang sulit memulai, enggan mencari
+materi, dan belum mengetahui perkembangannya. Target awal adalah JLPT N3 pada
+Desember 2026, dengan perkiraan kemampuan awal N3. Tanggal ujian tepat belum dicatat.
+Fokus pembelajaran: pemahaman materi ujian dan membaca. Kaiwa memakai jalur lain.
 
-The external teacher (initially ChatGPT Work) authors and interprets content; the
-application never calls an LLM to import, grade, or summarize.
+Keberhasilan berarti kebiasaan belajar lebih teratur dan kemampuan bahasa Jepang
+meningkat dari waktu ke waktu. Aktivitas mengerjakan dan kemampuan yang sudah
+dinilai harus dibedakan; aplikasi tidak mengklaim skor kelulusan atau penguasaan
+hanya dari banyaknya latihan.
 
-## Journeys
+## Guru dan kendali pengguna
 
-1. Sign in with Google through Firebase Authentication; an unapproved account gets
-   no learning-data access. Sign out clears application state.
-2. Upload a UTF-8 JSON file or paste JSON. Receive actionable field errors or a
-   preview with title, subject, skills, question counts/types, and duplicate status.
-   Confirm explicitly before importing. Failed imports write nothing.
-3. Select an imported pack and start a practice attempt. Answer all questions,
-   save a draft, and resume it later. The UI distinguishes saved, saving, and
-   failed saves; unsaved answers are not promised to survive a reload.
-4. Submit once. Objective questions receive deterministic results; other answers
-   reveal a model answer/rubric and require self-assessment. Complete the review,
-   then revisit the saved attempt from history.
-5. See basic progress by skill over the most recent 100 completed attempts, with
-   objective accuracy separated from self-assessment. This is practice evidence,
-   not a calibrated mastery estimate.
-6. Open the protected Teacher Report, copy or download its versioned JSON, and
-   provide it to the external teacher. Import the next generated pack using the
-   same process. Authenticated browser access by ChatGPT Work is an experiment;
-   manual sharing is the guaranteed MVP path.
+Guru adalah LLM eksternal yang dipilih pengguna, misalnya ChatGPT atau aplikasi LLM
+lain. Pengguna mengatur permintaan, sumber buku, ritme, materi, dan personalisasi
+melalui chat di aplikasi tersebut. Website menyimpan materi, pekerjaan, laporan,
+dan feedback; website tidak memanggil API LLM atau membuat jadwal otomatis.
 
-## Scope and success criteria
+Guru menentukan urutan materi, pengulangan, serta penyesuaian setelah absen atau
+sesi tidak selesai. Permintaan pengguna tetap mengendalikan keputusan itu. Tidak
+ada algoritma spaced repetition atau target harian kaku yang dipaksakan website.
+Akses baca langsung oleh LLM adalah integrasi mendatang yang harus dibuktikan;
+pertukaran manual merupakan jalur awal yang harus selalu berfungsi.
 
-| Requirement                 | Observable MVP success                                                                                                | Milestone              |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| Identity and isolation      | Anonymous/unapproved users denied; user A cannot access B's packs, attempts, or report                                | M2, M7                 |
-| Versioned content           | Example validates; malformed/unsupported packs fail with paths and no writes                                          | M3                     |
-| Upload/paste and preview    | Both inputs produce the same preview; import requires confirmation                                                    | M3                     |
-| Duplicate protection        | Concurrent identical imports create one pack; changed content under the same ID returns conflict                      | M3                     |
-| Four exercise families      | Multiple choice, one blank, short answer, and self-review render and accept typed answers                             | M4                     |
-| Save and resume             | Acknowledged draft answers survive sign-out/sign-in; failed saves are visible                                         | M4                     |
-| Results and grading         | Objective fixtures match documented normalization; manual work is never falsely auto-graded                           | M5                     |
-| Durable history             | Retried submit/assessment does not create additional attempts or mutate completed results                             | M5                     |
-| Skill progress              | Known attempt fixtures produce exact counters and a clearly labeled bounded window                                    | M6                     |
-| Teacher handoff             | Owner exports parseable teacher-context v1 without credentials; logged-out requests fail and responses are not cached | M6, M7                 |
-| Complete learning loop      | Import → save/resume → submit → self-review → report → second import works without any LLM key                        | M7                     |
-| Installability (after core) | Correct icons/manifest and browser installation verification; online behavior is explicit                             | M8, optional after MVP |
+## Perjalanan belajar yang dituju
 
-## Deliberate exclusions and assumptions
+1. Masuk dengan akun Google yang diizinkan. Data hanya untuk pemilik akun tersebut.
+2. Salin JSON dari aplikasi LLM atau pilih file, tinjau materi/soal, lalu konfirmasi
+   impor. Format tidak valid ditolak tanpa menulis sebagian data.
+3. Halaman utama menampilkan materi sesi berikutnya dan pintasan melanjutkan
+   pekerjaan. Sesi sekitar 10 menit, satu soal per layar, nyaman di kereta.
+4. Baca materi lalu jawab latihan. Tambahkan komentar tentang keraguan, alasan,
+   atau soal yang dirasa keliru. Tidak ada pembukaan kunci otomatis setelah submit.
+5. Berhenti kapan saja. Jawaban, komentar, refleksi, dan posisi terakhir disimpan
+   di perangkat dan server. Status membedakan simpan lokal, simpan server, serta
+   konflik/gagal simpan. Materi tetap memerlukan internet untuk dibuka.
+6. Isi refleksi 3–2–1: hingga tiga hal dipahami, dua hal membingungkan, dan satu
+   pertanyaan atau langkah berikutnya. Refleksi boleh belum lengkap saat jeda.
+7. Atas kendali pengguna, ekspor snapshot pekerjaan apa adanya, termasuk pekerjaan
+   belum selesai, ke guru. Jawaban kosong bukan jawaban salah. Laporan menyatakan
+   batas cakupannya dan hanya memuat data yang sudah masuk ke snapshot.
+8. Guru membaca jawaban/komentar lalu memberi penilaian, pembahasan, dan materi
+   berikutnya untuk diimpor. Feedback merujuk versi pekerjaan yang diperiksa.
+9. Diskusikan sanggahan di aplikasi LLM. Hasil diskusi diimpor sebagai catatan
+   tambahan bertag yang merujuk feedback lama; penilaian awal tetap tersimpan.
+10. Lihat aktivitas, target, dan perubahan kemampuan yang sudah mendapat penilaian.
+    Tidak ada nilai kemampuan untuk jawaban yang belum diperiksa.
 
-- No real-time tutor, OpenAI API, custom MCP server, automatic publishing, or
-  guaranteed scheduled ChatGPT Work execution.
-- No rich HTML/Markdown execution, media attachments, multiple blanks, timed exams,
-  course builder, sharing, pack editing/deletion, or cross-user teacher role.
-- No advanced spaced repetition, gamification, multi-tenant administration,
-  complex analytics, full offline sync, or offline answer storage.
-- Ratings are learner self-assessments; there is no human-marker workflow in MVP.
-  Every question must be answered before submission; drafts may be partial.
-- The learner importing a file can see its original keys. Key isolation prevents
-  accidental practice/API disclosure, not cheating by the content owner.
-- Owner supplies Firebase/Vercel configuration later. No resources are provisioned
-  during planning. Pack correctness is reviewed in preview; validation cannot
-  establish whether AI-generated educational content is true.
+## Materi dan pengalaman penggunaan
+
+- Bahasa antarmuka dan feedback awal: Indonesia; materi belajar: Jepang.
+- Mobile first, kontrol sentuh mudah, satu soal per layar, tanpa batas waktu.
+  Perjalanan pagi dan pulang boleh menjadi sesi sama atau berbeda sesuai permintaan.
+- Materi teks dengan furigana terstruktur. Guru memilih `toggle` untuk bacaan atau
+  `hidden` untuk latihan kanji. Teks diimpor sebagai data, bukan HTML/Markdown aktif.
+- Pilihan ganda, isian satu bagian kosong, jawaban pendek, refleksi terbuka, dan
+  tulisan bebas. Semua penilaian v2 berasal dari feedback guru yang diimpor.
+- Nikki/storytelling memakai topik dalam prompt guru atau topik pilihan pengguna.
+  Guru menanggapi bahasa, keraguan, dan penyampaian cerita. Tidak ada penilaian
+  mandiri yang diwajibkan untuk menyelesaikan alur baru.
+- Bisa dipasang di layar utama ponsel setelah tahap PWA selesai. Penyimpanan draf
+  lokal tidak berarti materi dapat dibuka atau seluruh aplikasi bekerja offline.
+
+## Kriteria keberhasilan
+
+| Kebutuhan | Bukti penerimaan |
+| --- | --- |
+| Mudah mulai | Materi sesi berikutnya dan pekerjaan terakhir mudah ditemukan di ponsel |
+| Aman saat komuter | Jeda, putus koneksi, dan reload tidak diam-diam menghapus draf lokal yang berhasil disimpan |
+| Guru mendapat konteks | Snapshot memuat materi, jawaban parsial, komentar, refleksi, dan feedback terkait |
+| Feedback tertunda | Tidak ada hasil baru sebelum feedback guru diimpor untuk snapshot yang tepat |
+| Diskusi terjaga | Anotasi menambah catatan tanpa mengganti pekerjaan atau penilaian awal |
+| Progres jujur | Aktivitas, belum dinilai, dan hasil penilaian ditampilkan terpisah |
+| Privasi | Akun lain tidak dapat membaca/menulis data; laporan tidak masuk cache bersama |
+| Siklus lengkap | Impor → latihan/jeda → ekspor → impor feedback → materi berikutnya tanpa API LLM |
+
+## Batas pengembangan awal
+
+Tetap memakai Next.js, Firebase Auth/Admin, Firestore, npm, dan komponen Base UI
+yang ada. Tidak ada migrasi/penghapusan data v1 pada tahap fondasi. Tidak ada akses
+publik, peran guru lintas akun, API tulis untuk LLM, atau deployment otomatis.
+
+Audio/listening, kaiwa, integrasi Obsidian/memory jangka panjang, pemanggilan API
+LLM, penjadwalan/notifikasi otomatis, analytics lanjutan, dan penggunaan materi
+sepenuhnya offline ditunda. Sumber buku serta preferensi guru dikelola di chat LLM.
+Ekspor laporan belajar tetap perlu; fitur backup penuh dan penghapusan akun belum
+menjadi kebutuhan saat ini.

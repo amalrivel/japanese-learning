@@ -1,4 +1,167 @@
-# Luna 6 execution plan
+# Rencana implementasi aktif — alur guru AI v2
+
+Diperbarui 2026-11-01 (Asia/Tokyo). [PRD](PRD.md) menentukan tujuan,
+[arsitektur](ARCHITECTURE.md) menentukan batas, dan
+[kontrak](CONTENT_CONTRACT.md) menentukan bentuk data. Panduan baru berbahasa
+Indonesia; catatan historis di bagian arsip dipertahankan dalam bentuk aslinya.
+
+## Status aktif
+
+| Tahap | Status | Hasil yang diperlukan |
+| --- | --- | --- |
+| N0 Penyelarasan panduan | Selesai | Enam panduan selaras, target dibedakan dari runtime v1 |
+| N1 Fondasi data v2 | Selesai | Skema, tipe, contoh dan tes ringan; tanpa perubahan runtime |
+| N2 Alur guru manual | Belum dimulai | Impor paket → pekerjaan → snapshot → impor feedback/anotasi |
+| N3 Pengalaman komuter | Belum dimulai | Bahasa Indonesia, satu soal per layar, materi/furigana, nikki, draf HP + server |
+| N4 Progres dan PWA | Belum dimulai | Aktivitas vs hasil guru, target belajar, halaman utama sesi berikutnya, pemasangan online |
+| N5 Verifikasi akhir | Belum dimulai | Suite lengkap dan gate hosted yang terbukti, bukan diasumsikan |
+
+M1–M6 adalah implementasi v1 yang telah diuji. M7 masih memiliki gate hosted dan
+M8 dulu ditunda; keduanya tetap riwayat. Gate rilis hosted tidak menghalangi
+pengembangan lokal N0–N4. Jangan menandai produk siap rilis hanya karena fondasi
+baru atau tes lokal berhasil. Tidak ada deployment/provisioning yang tersirat.
+
+## Kebijakan verifikasi
+
+1. Dokumen: cek tautan lokal, JSON contoh, istilah/status, dan `git diff --check`.
+   Tidak perlu emulator, browser, atau build untuk perubahan dokumentasi.
+2. Saat coding: satu kelompok tes unit relevan untuk logika baru/berubah. Jalankan
+   lint/typecheck setelah rangkaian perubahan selesai. Tidak mengulang suite penuh
+   setelah setiap edit kecil. Jangan menambahkan tes yang hanya menyalin implementasi.
+3. Setelah satu alur fungsional API/persistensi/UI tersambung: jalankan unit lengkap,
+   `test:emulators`, `test:e2e:emulators`, dan build sekali secara berurutan. Ulangi
+   pemeriksaan yang gagal/terdampak perbaikan berikutnya, bukan semua tanpa alasan.
+4. Pada tahap yang baru memuat schema/pure logic, emulator/browser/build belum
+   relevan dan ditunda. Catat sebagai ditunda, jangan dilaporkan lulus.
+5. Persistensi, ownership, dan rules harus punya bukti emulator demo sebelum tahap
+   alurnya selesai. Rilis tetap memerlukan verifikasi lengkap serta gate hosted.
+   Jangan menurunkan validasi/isolasi data agar tes cepat atau menghapus tes yang ada.
+6. CI verifikasi lengkap yang sudah ada tetap dipertahankan. Audit dependency dan
+   dependency tree diperiksa ketika dependency berubah atau menjelang rilis.
+
+## N0 — Penyelarasan panduan
+
+Perbarui PRD, ARCHITECTURE, CONTENT_CONTRACT, IMPLEMENTATION_PLAN, README, AGENTS.
+Pertahankan blok instruksi Next.js, bukti lama, data/contoh v1, dan pekerjaan lain.
+Target: JLPT N3 Desember 2026, sesi sekitar 10 menit, mobile first, guru eksternal
+atas kendali pengguna. Pertukaran manual didahulukan. Refleksi 3–2–1 berarti tiga
+hal dipahami, dua hal membingungkan, satu pertanyaan/langkah, bukan pola membaca 3 kali.
+
+**Selesai bila:** panduan tidak mengklaim endpoint/UI v2 tersedia dan tidak lagi
+memaksakan self-assessment/hanya latihan selesai sebagai target baru; tautan valid.
+
+## N1 — Fondasi data v2 (tahap implementasi pertama)
+
+- Tambahkan schema Zod dan inferred types pada domain content/practice/analytics.
+  Gunakan kembali ID, timestamp/metadata, normalisasi, dan canonical JSON yang ada;
+  tidak mengubah callers atau schema v1.
+- Paket publik: metadata, materi/RichText furigana, soal dan tulisan bebas, tanpa
+  kunci/penilaian. Pekerjaan: jawaban/comment, posisi, revisi/status, refleksi parsial.
+- Konteks: snapshot paket/pekerjaan yang tepat, termasuk belum selesai, dan riwayat
+  feedback. Feedback awal terpisah dari anotasi bertag/parent. Jangan menilai kosong
+  sebagai salah atau mengubah penilaian awal lewat anotasi.
+- Validator raw JSON membatasi byte/depth/versi; validator lintas objek menolak ID,
+  pilihan, revisi, parent dan snapshot yang tidak sesuai. Validasi shape saja tidak
+  cukup untuk writer yang akan dibangun pada N2.
+- Tambahkan contoh paket, pekerjaan, report parsial, feedback awal, dan anotasi.
+  Pertahankan contoh v1 yang dipakai UI/test lama.
+
+**Cek ringan:**
+`npm exec -- vitest run tests/unit/learning-v2.test.ts tests/unit/content.test.ts`,
+lint, typecheck, tautan/contoh JSON, `git diff --check`.
+
+**Selesai bila:** contoh valid lulus, invalid/batas/referensi ditolak, kompatibilitas
+v1 terbukti, dan semua perubahan masih bebas I/O/API/database/UI. Skema siap menjadi
+kontrak implementasi, bukan fitur website yang sudah tersedia.
+
+## N2 — Alur guru manual
+
+Implementasikan route/service v2 di bawah pemilik token dengan preview/konfirmasi.
+Paket/snapshot/feedback immutable; pekerjaan memakai revisi transaksional. Pertahankan
+route dan data v1 tanpa konversi otomatis. Report memuat keadaan pekerjaan parsial
+apa adanya, termasuk komentar/refleksi, tanpa kunci atau identitas pribadi.
+
+Snapshot ekspor adalah mutasi eksplisit yang menyimpan versi pekerjaan; GET read-only.
+Feedback merujuk snapshot tersimpan. Validasi calon konteks lengkap setelah append,
+termasuk parent dan larangan menimpa assessment. ID/hash retry identik idempoten;
+konflik/validasi gagal tidak boleh menghasilkan tulis sebagian. Setelah feedback,
+paket baru tetap impor terpisah, bukan output AI yang dieksekusi otomatis.
+
+**Cek selama pengerjaan:** tes logika terfokus, lint/typecheck setelah batch.
+**Gate akhir alur:** emulator/rules untuk ownership, retry, snapshot dan konflik;
+browser smoke untuk loop manual, unit lengkap dan build. Catat gate hosted terpisah.
+
+## N3 — Pengalaman komuter
+
+Gunakan komponen/token yang ada dan skill UI/UX/Base UI. Bahasa Indonesia, satu soal
+per layar, tombol sentuh mudah, kembali/lanjut/posisi yang pulih, tanpa timer paksa.
+Materi ditampilkan sebelum latihan; ruby bisa on/off kecuali `furigana:hidden`.
+Nikki memakai prompt guru atau topik sendiri; komentar per soal dan refleksi dapat dijeda.
+
+Implementasikan draf IndexedDB terpisah menurut UID/pekerjaan, tanpa library baru.
+Tulis lokal dahulu, simpan server serial, pulihkan setelah reload, jangan buang lokal
+saat konflik. Bedakan lokal/server/gagal/konflik; warning draf belum tersinkron sebelum
+sign-out dan pembersihan. Material tetap online; report tidak memakai cache offline.
+
+**Cek selama pengerjaan:** unit draft/revisi/recovery terfokus.
+**Gate akhir alur:** browser ponsel/keyboard, reload/putus koneksi/gagal simpan/akun
+berubah, unit lengkap, emulator dan build. Batas browser menghapus storage dijelaskan.
+
+## N4 — Progres dan PWA
+
+Tampilkan aktivitas dan kemampuan yang sudah dinilai secara terpisah, perubahan
+hasil guru dari waktu ke waktu, serta target belajar. Feedback anotasi tidak dihitung
+sebagai nilai baru. Tampilkan cakupan data dan jangan membuat klaim mastery otomatis.
+
+Halaman utama mendahulukan sesi berikutnya serta lanjutkan pekerjaan. Perbarui
+manifest/ikon/identitas dan verifikasi pemasangan online. Pengguna/guru tetap memilih
+ritme dan pengulangan; tidak ada scheduling atau notifikasi otomatis pada tahap ini.
+
+## N5 — Verifikasi akhir dan rilis
+
+Jalankan unit lengkap → emulator integration/rules → browser end-to-end → production
+build. Periksa redaksi/ownership, JSON hostile, retry, revisi, anotasi, draf lokal,
+account switch/sign-out, mobile/keyboard, dan loop materi berikutnya. Periksa dependency
+audit sebelum rilis. Gunakan demo project saja untuk tes otomatis.
+
+Gate hosted: Google/domain/allowlist, HTTPS/private headers, index dan query produksi,
+revocation/disabled account. Native picker dan BFCache restoration memerlukan bukti
+tersendiri. Akses baca LLM tidak dijanjikan hanya karena API ada. Bila akses tersebut
+belum terbukti, ekspor manual tetap jalur utama. Deployment menunggu permintaan pemilik.
+
+## Bukti N0–N1 (2026-11-01)
+
+N0 dan N1 selesai; N2 menjadi tahap berikutnya. Keenam panduan diselaraskan, tiga
+modul schema v2 dan satu berkas tes ditambahkan, serta lima contoh JSON v2 tersedia.
+Skema/tipenya belum dipakai route, database, atau UI. Tidak ada dependency baru.
+
+| Pemeriksaan | Bukti |
+| --- | --- |
+| `npm exec -- vitest run tests/unit/learning-v2.test.ts tests/unit/content.test.ts` | PASS, exit 0; 13 tes dalam 2 berkas; 287 ms pada run ini |
+| `npm run lint` | PASS, exit 0 |
+| `npm run typecheck` | PASS, exit 0; route type generation dan TypeScript |
+| `git diff --check` | PASS, exit 0 |
+| Tautan/contoh | Semua path dan anchor Markdown lokal di enam panduan ditemukan; seluruh JSON contoh terparse |
+| Pelestarian | Hash contoh v1, schema/callers v1 yang diperiksa, package/lock, config, dan perubahan tes lama tidak berubah dari awal pekerjaan; blok Next.js asli tetap sama |
+| Riwayat | Seluruh isi kontrak v1 dan rencana/bukti lama tetap di bagian arsip, hanya judul pembatas yang diperjelas |
+| `graphify update .` | PASS, exit 0; AST-only tanpa API LLM; graph 3325 nodes/4963 edges. Ekstraksi paralel ditolak sandbox lalu fallback sequential berhasil |
+
+Tes baru memeriksa pekerjaan parsial/comment/refleksi, rich text inert, referensi
+paket/pilihan, target snapshot/revisi, larangan menilai kosong, parent anotasi,
+penilaian awal immutable, ukuran/depth/versi JSON, dan batas kompatibilitas v1/v2.
+
+**Ditunda sesuai cakupan:** unit lengkap, emulator integration/rules, browser,
+production build, audit dependency, cloud/hosted, akses baca LLM, dan persistensi
+draf perangkat. Fondasi belum memiliki I/O/persistensi. Pembaruan graph hanya AST;
+node semantik dokumen belum diekstrak ulang. Tidak ada klaim fitur v2 siap rilis.
+
+## Arsip implementasi v1 — bukti M1–M8
+
+Catatan asli berikut dipertahankan untuk audit dan tautan lama. Status/hambatan
+hosted tetap relevan bagi rilis; instruksi urutan, kebijakan tes, self-assessment,
+dan larangan draf lokal di dalam arsip tidak menggantikan rencana aktif di atas.
+
+# Riwayat pelaksanaan v1 (catatan asli)
 
 Status: M1–M3 were implemented and verified on 2026-10-27; M4 and M5 were implemented
 and verified on 2026-10-28. Run one milestone at a time in dependency order. Do not infer completion
@@ -17,7 +180,7 @@ starter examples. Read [PRD](PRD.md), [architecture](ARCHITECTURE.md), and
 | M4 Practice and draft persistence               | Complete             | 2026-10-28: draft APIs, practice/history UI, emulator and browser verification passed; see M4 evidence below. M5 may begin.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | M5 Grading and durable review                   | Complete             | 2026-10-28: deterministic grading, immutable submission/review, emulator and browser verification passed; see M5 evidence below. M6 may begin.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | M6 Progress and teacher export                  | Complete             | 2026-10-29: bounded progress, read-only teacher handoff, emulator and browser verification passed; see M6 evidence below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| M7 Full-loop verification and release readiness | Not started          | Depends on M6; hosted smoke checks need owner configuration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| M7 Full-loop verification and release readiness | In progress          | Local verification underway; hosted smoke checks need owner configuration. See M7 evidence below. |
 | M8 Installability                               | Deferred             | Optional only after M7; no offline sync                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 Planning audit (2026-10-26): one-off Node assertions validated all example fields,
@@ -602,6 +765,144 @@ that need owner configuration; never infer those from emulator success.
 owner-configured runtime/index/auth readiness. If no hosted environment is
 authorized/available, record the external gate and leave M7 incomplete; deployment
 is a separate user action, not an implied task.
+
+### M7 evidence in progress (2026-10-30)
+
+- Local environment: Node 24.22.1, npm 11.19.1, OpenJDK 21.0.12.1,
+  Chrome 156.0.8078.47; demo Auth and Firestore emulators. `npm ls --depth=0`,
+  lint, typecheck, 25 unit tests, 11 integration tests, 3 rules tests, and
+  production build passed. Integration and rules ran with the demo project only.
+- Production audit reported zero vulnerabilities. Full audit reported eight
+  affected development package entries from the same three unique advisories
+  previously recorded: GHSA-8988-4f7v-96qf, GHSA-gcqx-w48m-w2h4, and
+  GHSA-w5hq-g745-h8pq. No forced dependency changes were applied.
+- Added a CI workflow and the required `test:e2e:emulators` alias. Workflow YAML
+  parses locally; GitHub Actions has not been run remotely. The browser harness
+  and integration harness check port availability, wait for their own server and
+  fail on readiness timeout. With a separately started dummy listener on port
+  3100, the integration harness failed closed before sending it any requests;
+  the dummy listener remained running until its own test cleaned it up.
+- An additional audit found Next.js automatic OPTIONS responses lacked private
+  cache headers. `/api/:path*` now supplies `private, no-store` and `Vary:
+  Authorization` even for framework-generated responses. Integration checks cover
+  OPTIONS and HEAD on all nine API routes. A local production-server smoke test
+  confirmed those headers for GET/HEAD 401 and OPTIONS 204 on `/api/packs`.
+- `npm run test:e2e:emulators` passed 10 browser tests, including a file import
+  through saved resume, grading, self-review, history, report and follow-up
+  paste import. It also exercised concurrent/conflicting saves, lost responses,
+  account switches, report export and keyboard controls. A focused rerun of the
+  full loop at 390px passed, including a keyboard focus check.
+  Back/forward after sign-out showed no report data. Playwright normally disables
+  BFCache, so the test now removes that default flag. Chrome still did not restore
+  from BFCache; CDP reported main-resource and fetched-response `no-store`, a
+  development WebSocket, and browsing-instance conditions. Actual restoration
+  therefore remains unverified. The file-input check
+  uses `setInputFiles`, not the native operating-system picker. Focused reruns
+  passed after adding hostile text in labels, answers and explanations, and
+  confirming static TeacherContext instructions remain unchanged.
+- A focused rerun found the draft sentinel absent from pack and attempt GET
+  responses, the rendered page, and a requested RSC prefetch response. The
+  production static bundle contained neither the example's
+  distinctive answer explanation nor the server private-key variable name.
+  Firebase Web configuration is intentionally public. Source inspection found
+  no registered service worker or raw HTML rendering; an unreferenced legacy
+  service-worker source file is not a registered cache mechanism.
+- A separate clean production build with browser source maps enabled only in the
+  temporary copy was inspected without private environment values. Its 24 maps
+  contained 499 source entries and no Firebase Admin, server Firestore, project
+  server-only modules or example fixture path. All 46 generated JavaScript files
+  lacked the Admin singleton marker and 11 distinctive explanation, model-answer
+  and rubric texts from the fixture. Twenty-two JavaScript files had no source map
+  in that build: 19 matched a numeric-only webpack wrapper pattern, the polyfill
+  was byte-identical to the installed Next.js `polyfill-nomodule.js`, and the two
+  remaining generated manifests were inspected as data and expected callbacks.
+  In the actual local build, 16 of the 20 corresponding chunk files were byte-identical;
+  the other four matched the same numeric-only wrapper pattern, and both manifests
+  contained only the expected data, callback and `Set` syntax. These checks are
+  specific to the local builds. The same 11 text and
+  Admin-marker checks passed against all 46 JavaScript files in the actual local
+  production build. Source maps were not
+  enabled in the project configuration or claimed as hosted-build evidence.
+- The workflow's individual lint, typecheck, unit, emulator, build and browser
+  commands were run locally; `npm ci --include=dev` also passed in a separate
+  temporary directory from the lockfile. In that directory, a production build
+  passed with no `.env` files and a cleared environment; lint, typecheck, 25 unit,
+  11 integration, 3 rules and 10 browser tests also passed using the installed
+  demo emulator binaries and local Chrome override. The full workflow was not replayed as
+  a GitHub Actions job; hosted CI remains unverified. CI now selects the managed
+  Chromium installed by its workflow unless an executable override is set;
+  configuration checks covered CI, local and override selection. The full-loop
+  test passed locally with `CI=1` and the existing Chrome override. The managed
+  CI browser itself was not installed or run locally.
+- A read-only GitHub connector query for the current commit returned no
+  pull-request-triggered workflow runs on its first page; that filtered result
+  does not establish the absence of other runs. The M7 workflow and changes are
+  uncommitted, so no remote run can be treated as verification of this worktree.
+- Owner-configured Google sign-in/domains, hosted HTTPS and private headers,
+  production indexes and query smoke tests, and real revoked-token/disabled-user
+  checks remain unverified. Native OS file-picker interaction is distinct from
+  Playwright file input. No deployment or cloud provisioning was performed.
+- A read-only Vercel connector check found no project matching the repository URL
+  or `japanese-learning` name in the authenticated personal scope or the one
+  visible team. This does not rule out an environment in another account or
+  hosting provider; no deployment or configuration was changed.
+- A read-only Firebase Console inspection of the existing project named
+  `japanese-learning` (project ID `japanese-learning-dc116`) showed a rules editor
+  permitting all reads and writes until 2026-11-25, contrary to this repository's
+  deny-all `firestore.rules`. The manual/composite indexes screen showed its
+  empty-state rather than the two required indexes. The console did not show a
+  publication status in the inspected view, and the project's relationship to
+  the eventual release environment was not established at that time. No cloud
+  changes or production-document reads were made during that inspection.
+  A follow-up read-only inspection found no publication history in that console
+  view, and the local Firebase CLI had no signed-in account; neither confirms which
+  ruleset is active.
+- A subsequent unauthenticated REST GET for a randomly generated, nonexistent
+  document path in that Firebase project returned 404 `NOT_FOUND`, with the body
+  suppressed; the equivalent probe against the demo emulator using the checked-in
+  deny-all rules returned 403 `PERMISSION_DENIED`. This is evidence that anonymous
+  reads are not denied for that path. It does not prove the displayed ruleset's
+  complete contents or test write access; no document was created or read.
+- In the same project's Authentication console, the Google provider was shown as
+  enabled. Its authorized-domain table showed only `localhost`,
+  `japanese-learning-dc116.firebaseapp.com` and `japanese-learning-dc116.web.app`.
+  No release hostname has been identified for comparison, and no live sign-in
+  was attempted; this observation does not establish hosted authentication readiness.
+- Follow-up: the owner confirmed `japanese-learning-dc116` is dedicated to this
+  application and published the checked-in deny-all rules. The console subsequently
+  displayed `allow read, write: if false`, and an unauthenticated REST GET for a
+  random nonexistent document returned 403 `PERMISSION_DENIED` with the body
+  suppressed. This proves that read request was denied, not every operation or
+  prior absence of exposure; the owner should assess potential earlier exposure.
+  The manual index screen still showed no composite indexes, and Automatic index
+  exemptions showed `0 of 0`: the two composites and five field exemptions in
+  `firestore.indexes.json` were not visible. No cloud configuration was changed.
+- The existing local listener on port 3000 returned 401 for an anonymous API
+  request and 503 for a deliberately invalid bearer token, both with private
+  no-store headers. The latter is consistent with unavailable server authentication
+  configuration; no valid Firebase token was used, so real-project authenticated
+  API access remains unverified. The emulator suite passed 11 integration and
+  3 rules tests after the owner's rules publication, proving the demo flow only.
+- The owner subsequently identified `http://localhost:3000/` as the running app.
+  A repeat read-only check returned 401 anonymously and 503 `UNAVAILABLE`
+  (`Authentication is not configured`) with an invalid bearer token. The app
+  checks server configuration before token verification; authenticated access
+  cannot yet be verified through this process. The listener was not stopped.
+- The owner later supplied an Admin service-account file. Its project ID and
+  key format were checked without displaying credentials; the repository copy
+  was moved outside the repository, and the owner's duplicate and local env file
+  were restricted to owner-only access. The Admin variables are now present in
+  the ignored local environment. The owner supplied a UID for the test allowlist;
+  configuration validation passed and the existing listener subsequently returned
+  401 for an invalid bearer instead of 503. A valid-token request remains unverified.
+  The local server was not stopped.
+- The owner later reported signing in with the authorized test account and allowed
+  inspection of only the localhost tab. Direct attachment to the previously known
+  tab failed because its browser connection was unavailable; no browser inventory
+  or other tab was read. A repeat local API check returned 401 for anonymous and
+  invalid-token requests, with private/no-store and `Vary: Authorization`. The
+  README now describes a manual status/header check that avoids sharing tokens or
+  response bodies; a valid-token API response still requires that evidence.
 
 ## M8 — Optional PWA installability, after the verified core
 

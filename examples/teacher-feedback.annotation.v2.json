@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 2,
+  "kind": "teacher-feedback",
+  "id": "feedback-20261101-discussion",
+  "createdAt": "2026-11-01T02:00:00.000Z",
+  "target": {
+    "snapshotId": "22222222-2222-4222-8222-222222222222",
+    "workId": "11111111-1111-4111-8111-111111111111",
+    "revision": 3
+  },
+  "summary": "Setelah diskusi, catatan partial di atas merujuk pengembangan cerita, bukan kesalahan tata bahasa pada kalimat Anda. Penilaian awal tetap tercatat.",
+  "mode": "annotation",
+  "inReplyTo": "feedback-20261101",
+  "tag": "clarification",
+  "exerciseId": "commuter-diary"
+}

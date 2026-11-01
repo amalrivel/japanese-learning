@@ -4,6 +4,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { cp, mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { createServer } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { deleteApp, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
@@ -39,10 +40,15 @@ async function signIn(email: string, password: string) {
 async function waitForServer() {
   const deadline = Date.now() + 120_000;
   while (Date.now() < deadline) {
-    if (server.exitCode !== null) throw new Error(`Test server exited early: ${serverOutput}`);
+    if (server.exitCode !== null || server.signalCode !== null)
+      throw new Error(`Test server exited early: ${serverOutput}`);
     try {
-      const response = await fetch("http://127.0.0.1:3100/api/packs");
-      if (response.status === 401) return;
+      if (serverOutput.includes("Ready")) {
+        const response = await fetch("http://127.0.0.1:3100/api/packs", {
+          signal: AbortSignal.timeout(2_000),
+        });
+        if (response.status === 401) return;
+      }
     } catch {
       /* The dev server is still starting. */
     }
@@ -51,7 +57,16 @@ async function waitForServer() {
   throw new Error(`Test server did not become ready: ${serverOutput}`);
 }
 
-function startServer(overrides: Partial<NodeJS.ProcessEnv> = {}) {
+async function assertFreePort() {
+  await new Promise<void>((resolvePort, reject) => {
+    const probe = createServer();
+    probe.once("error", reject);
+    probe.listen(3100, "127.0.0.1", () => probe.close(() => resolvePort()));
+  });
+}
+
+async function startServer(overrides: Partial<NodeJS.ProcessEnv> = {}) {
+  await assertFreePort();
   serverOutput = "";
   server = spawn(
     process.execPath,
@@ -92,7 +107,7 @@ function startServer(overrides: Partial<NodeJS.ProcessEnv> = {}) {
 }
 
 async function stopServer() {
-  if (server && server.exitCode === null) {
+  if (server && server.exitCode === null && server.signalCode === null) {
     const exited = new Promise<void>((resolve) => server.once("exit", () => resolve()));
     server.kill("SIGTERM");
     await exited;
@@ -102,6 +117,7 @@ async function stopServer() {
 describe("authenticated API boundary", () => {
   beforeAll(async () => {
     assertDemoEmulators();
+    await assertFreePort();
     // Keep the test server's generated files and demo config separate from a running workspace.
     testDirectory = await mkdtemp(join(tmpdir(), "learning-pwa-m2-"));
     for (const name of [
@@ -126,7 +142,7 @@ describe("authenticated API boundary", () => {
       await auth.createUser({ ...user, displayName: user.uid });
     }
 
-    startServer();
+    await startServer();
     await waitForServer();
     tokens = await Promise.all(users.map((user) => signIn(user.email, user.password)));
   }, 120_000);
@@ -147,6 +163,29 @@ describe("authenticated API boundary", () => {
     }
     if (testDirectory) await rm(testDirectory, { recursive: true, force: true });
   }, 30_000);
+
+  it("keeps automatically handled OPTIONS and HEAD responses private", async () => {
+    const paths = [
+      "/api/packs",
+      "/api/packs/import",
+      "/api/packs/example",
+      "/api/attempts",
+      "/api/attempts/11111111-1111-4111-8111-111111111111",
+      "/api/attempts/11111111-1111-4111-8111-111111111111/submit",
+      "/api/attempts/11111111-1111-4111-8111-111111111111/assessments",
+      "/api/progress",
+      "/api/teacher/context",
+    ];
+    for (const path of paths) {
+      for (const method of ["OPTIONS", "HEAD"]) {
+        const response = await fetch(`http://127.0.0.1:3100${path}`, { method });
+        expect(response.headers.get("cache-control"), `${method} ${path}`).toBe(
+          "private, no-store",
+        );
+        expect(response.headers.get("vary"), `${method} ${path}`).toContain("Authorization");
+      }
+    }
+  });
 
   it("fails closed for absent, invalid, and unapproved bearer tokens", async () => {
     const url = "http://127.0.0.1:3100/api/packs";
@@ -1228,7 +1267,7 @@ describe("authenticated API boundary", () => {
 
   it("fails safely when the server Firebase project is misconfigured", async () => {
     await stopServer();
-    startServer({ FIREBASE_PROJECT_ID: "wrong-project" });
+    await startServer({ FIREBASE_PROJECT_ID: "wrong-project" });
     await waitForServer();
     const response = await fetch("http://127.0.0.1:3100/api/packs", {
       headers: { Authorization: `Bearer ${tokens[0]}` },

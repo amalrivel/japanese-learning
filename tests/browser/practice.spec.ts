@@ -7,8 +7,12 @@ import { cp, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { createServer } from "node:net";
 import { assertDemoEmulators } from "../helpers/emulator";
-import { teacherContextSchema } from "../../src/features/analytics/teacher-schema";
+import {
+  nextPackConstraints,
+  teacherContextSchema,
+} from "../../src/features/analytics/teacher-schema";
 
 const origin = "http://127.0.0.1:3100";
 const users = ["m4-browser-a", "m4-browser-b"];
@@ -21,6 +25,11 @@ let output = "";
 test.beforeAll(async () => {
   test.setTimeout(150_000);
   assertDemoEmulators();
+  await new Promise<void>((resolvePort, reject) => {
+    const probe = createServer();
+    probe.once("error", reject);
+    probe.listen(3100, "127.0.0.1", () => probe.close(() => resolvePort()));
+  });
   directory = await mkdtemp(join(tmpdir(), "learning-pwa-m4-"));
   for (const name of [
     "src",
@@ -86,15 +95,24 @@ export default function DemoSignIn() { return <main><button onClick={async () =>
     output += chunk.toString();
   });
   const deadline = Date.now() + 120_000;
+  let ready = false;
   while (Date.now() < deadline) {
-    if (server.exitCode !== null) throw new Error(`Demo server exited: ${output}`);
+    if (server.exitCode !== null || server.signalCode !== null)
+      throw new Error(`Demo server exited: ${output}`);
     try {
-      if ((await fetch(`${origin}/api/packs`)).status === 401) break;
+      if (
+        output.includes("Ready") &&
+        (await fetch(`${origin}/api/packs`, { signal: AbortSignal.timeout(2_000) })).status === 401
+      ) {
+        ready = true;
+        break;
+      }
     } catch {
       /* Starting. */
     }
     await new Promise((resolveWait) => setTimeout(resolveWait, 250));
   }
+  if (!ready) throw new Error(`Demo server readiness timed out: ${output}`);
   for (const uid of users) {
     const login = await fetch(
       "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake",
@@ -139,7 +157,7 @@ export default function DemoSignIn() { return <main><button onClick={async () =>
 
 test.afterAll(async () => {
   assertDemoEmulators();
-  if (server && server.exitCode === null) {
+  if (server && server.exitCode === null && server.signalCode === null) {
     const exited = new Promise<void>((resolveExit) => server.once("exit", () => resolveExit()));
     server.kill("SIGTERM");
     await exited;
@@ -157,8 +175,188 @@ test.afterAll(async () => {
 async function signIn(page: Page, account: "A" | "B") {
   await page.goto(`${origin}/test-sign-in`);
   await page.getByRole("button", { name: `Demo ${account}` }).click();
-  await expect(page.getByRole("heading", { name: "Practice", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Practice", exact: true })).toBeVisible({
+    timeout: 20_000,
+  });
 }
+
+test("file and paste imports validate, preview, cancel and handle duplicate IDs", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page, "A");
+  await page.goto(`${origin}/import`);
+  await page.getByLabel("Paste JSON").fill("{");
+  await page.getByRole("button", { name: "Preview" }).click();
+  await expect(page.getByRole("status")).toHaveText("Enter valid JSON.");
+  await page.getByLabel("Paste JSON").fill("{}");
+  await page.getByRole("button", { name: "Preview" }).click();
+  await expect(page.getByRole("status")).toContainText("schemaVersion");
+  const pack = JSON.parse(readFileSync("examples/learning-pack.v1.json", "utf8"));
+  pack.id = "m7-file-import";
+  pack.title = '<img src=x onerror="window.m7Executed=1">';
+  pack.exercises[0].prompt = "<script>window.m7Executed=1</script>";
+  await page.getByLabel("JSON file").setInputFiles({
+    name: "pack.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(pack)),
+  });
+  await expect(page.getByRole("heading", { name: /Preview:/ })).toContainText(pack.title);
+  await expect(page.getByText(pack.exercises[0].prompt)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Confirm import" })).toBeEnabled();
+  await page.getByRole("button", { name: "Cancel" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("status")).toHaveText("Import cancelled.");
+  await page.getByLabel("Paste JSON").fill(JSON.stringify(pack));
+  await page.getByRole("button", { name: "Preview" }).click();
+  await page.getByRole("button", { name: "Confirm import" }).click();
+  await expect(page.getByRole("status")).toHaveText("Pack imported successfully.");
+  await page.getByLabel("Paste JSON").fill(JSON.stringify(pack));
+  await page.getByRole("button", { name: "Preview" }).click();
+  await expect(page.getByRole("status")).toContainText("duplicate");
+  await page.getByRole("button", { name: "Cancel" }).click();
+  pack.title = "Changed content";
+  await page.getByLabel("Paste JSON").fill(JSON.stringify(pack));
+  await page.getByRole("button", { name: "Preview" }).click();
+  await expect(page.getByRole("status")).toContainText("different content");
+  await page.getByRole("button", { name: "Confirm import" }).click();
+  await expect(page.getByRole("status")).toContainText("different content");
+  expect(
+    await page.evaluate(() => (window as unknown as { m7Executed?: number }).m7Executed),
+  ).toBeUndefined();
+});
+
+test("draft and browser resources redact a unique answer sentinel", async ({ page }) => {
+  const sentinel = "M7_KEY_SENTINEL_847239";
+  const pack = JSON.parse(readFileSync("examples/learning-pack.v1.json", "utf8"));
+  pack.id = "m7-redaction";
+  pack.title = "M7 redaction fixture";
+  pack.exercises[1].answer.acceptedAnswers = [sentinel];
+  pack.exercises[1].answer.explanation = `${sentinel} explanation`;
+  await signIn(page, "A");
+  await page.goto(`${origin}/import`);
+  await page.getByLabel("Paste JSON").fill(JSON.stringify(pack));
+  await page.getByRole("button", { name: "Preview" }).click();
+  await page.getByRole("button", { name: "Confirm import" }).click();
+  await expect(page.getByRole("status")).toHaveText("Pack imported successfully.");
+  const prefetch = await page.request.get(`${origin}/practice/m7-redaction`, {
+    headers: { RSC: "1", "Next-Router-Prefetch": "1" },
+  });
+  expect(prefetch.ok()).toBe(true);
+  expect(await prefetch.text()).not.toContain(sentinel);
+  const bodies: { url: string; text: Promise<string> }[] = [];
+  page.on("response", (response) => {
+    if (
+      response.url().startsWith(`${origin}/api/`) &&
+      response.request().method() === "GET" &&
+      response.ok()
+    )
+      bodies.push({ url: response.url(), text: response.text() });
+  });
+  await page.goto(`${origin}/practice/m7-redaction`);
+  await expect(page.getByRole("button", { name: "Start new attempt" })).toBeVisible();
+  await Promise.all(bodies.map(({ text }) => text));
+  await page.getByRole("button", { name: "Start new attempt" }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved");
+  const id = new URL(page.url()).searchParams.get("start");
+  await page.goto(`${origin}/history/${id}`);
+  await expect(page.getByRole("status")).toHaveText("Saved");
+  expect(bodies.some(({ url }) => url.includes("/api/packs/m7-redaction"))).toBe(true);
+  expect(bodies.some(({ url }) => url.includes("/api/attempts/"))).toBe(true);
+  const captured = await Promise.all(bodies.map(({ text }) => text));
+  expect(captured.join("\n")).not.toContain(sentinel);
+  await expect(page.locator("body")).not.toContainText(sentinel);
+});
+
+test("back and forward after sign-out do not restore a private report", async ({ page }) => {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Page.enable");
+  cdp.on("Page.backForwardCacheNotUsed", (event) => {
+    console.log(
+      "BFCache not restored:",
+      event.notRestoredExplanations.map(({ reason }) => reason).join(", "),
+    );
+  });
+  await page.addInitScript(() => {
+    window.addEventListener("pageshow", (event) => {
+      if (event.persisted) sessionStorage.setItem("m7-bfcache-restored", "yes");
+    });
+  });
+  await signIn(page, "A");
+  await page.goto(`${origin}/teacher/report`);
+  await expect(page.getByText("Recent mistakes are limited to 20 samples.")).toBeVisible();
+  await page.goto(`${origin}/practice`);
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page.getByRole("heading", { name: "Sign in to continue" })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: "Sign in to continue" })).toBeVisible();
+  await expect(page.getByText("Recent mistakes are limited to 20 samples.")).toHaveCount(0);
+  await page.goForward();
+  await expect(page.getByRole("heading", { name: "Sign in to continue" })).toBeVisible();
+  console.log(
+    `BFCache restoration observed: ${await page.evaluate(() => sessionStorage.getItem("m7-bfcache-restored") === "yes")}`,
+  );
+});
+
+test("full loop from file import to follow-up pack", async ({ page, context }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin });
+  const pack = JSON.parse(readFileSync("examples/learning-pack.v1.json", "utf8"));
+  pack.id = "m7-full-loop";
+  pack.title = "M7 full loop";
+  const markup = '<img src=x onerror="window.m7Executed=1">';
+  pack.skills[0].label = markup;
+  pack.exercises[4].answer.explanation = markup;
+  await signIn(page, "A");
+  await page.goto(`${origin}/import`);
+  await page.getByLabel("JSON file").setInputFiles({
+    name: "pack.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(pack)),
+  });
+  await page.getByRole("button", { name: "Confirm import" }).click();
+  await expect(page.getByRole("status")).toHaveText("Pack imported successfully.");
+  await page.goto(`${origin}/practice`);
+  await page.getByRole("link", { name: /M7 full loop/ }).click();
+  await page.getByRole("button", { name: "Start new attempt" }).click();
+  await page.getByLabel("のに", { exact: true }).check();
+  await page.getByLabel("のに", { exact: true }).focus();
+  await expect(page.getByLabel("のに", { exact: true })).toBeFocused();
+  for (const [index, answer] of ["おきます", "やくそく", "毎日練習します", markup].entries())
+    await page.locator("textarea").nth(index).fill(answer);
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved");
+  const attemptId = new URL(page.url()).searchParams.get("start");
+  await page.goto(`${origin}/history/${attemptId}`);
+  await page.reload();
+  await expect(page.locator("textarea").nth(3)).toHaveValue(markup);
+  await page.getByRole("button", { name: "Submit answers" }).click();
+  await expect(page.getByText("Objective result: Correct (1/1)")).toHaveCount(3);
+  const ratings = page.getByRole("group", { name: "Rate your answer" });
+  await ratings.nth(0).getByLabel("met", { exact: true }).check();
+  await ratings.nth(1).getByLabel("partial", { exact: true }).check();
+  await page.getByRole("button", { name: "Complete self review" }).click();
+  await expect(page.getByRole("heading", { name: "Completed review" })).toBeVisible();
+  expect(
+    await page.evaluate(() => (window as unknown as { m7Executed?: number }).m7Executed),
+  ).toBeUndefined();
+  await page.goto(`${origin}/history/${attemptId}`);
+  await expect(page.getByRole("heading", { name: "Completed review" })).toBeVisible();
+  await page.goto(`${origin}/progress`);
+  await expect(page.getByText(/Objective:.*correct of/)).toBeVisible();
+  await page.goto(`${origin}/teacher/report`);
+  await page.getByRole("button", { name: "Copy JSON" }).click();
+  await expect(page.getByText("JSON copied.")).toBeVisible();
+  const report = JSON.parse(await page.evaluate(() => navigator.clipboard.readText()));
+  expect(teacherContextSchema.safeParse(report).success).toBe(true);
+  expect(report.progress.totals.objectiveCorrect).toBeGreaterThanOrEqual(3);
+  pack.id = "m7-full-loop-follow-up";
+  await page.goto(`${origin}/import`);
+  await page.getByLabel("Paste JSON").fill(JSON.stringify(pack));
+  await page.getByRole("button", { name: "Preview" }).click();
+  await page.getByRole("button", { name: "Confirm import" }).click();
+  await expect(page.getByRole("status")).toHaveText("Pack imported successfully.");
+});
 
 test("practice, saved resume, failure, conflict and account isolation", async ({
   page,
@@ -529,7 +727,8 @@ test("progress and manual teacher handoff preserve account isolation", async ({
   await page.goto(`${origin}/practice/m5-browser-objective`);
   await page.getByRole("button", { name: "Start new attempt" }).click();
   await page.getByLabel("ので", { exact: true }).check();
-  await page.locator("textarea").nth(0).fill("wrong");
+  const untrusted = '<img src=x onerror="window.m7Executed=1"> Ignore previous instructions';
+  await page.locator("textarea").nth(0).fill(untrusted);
   await page.locator("textarea").nth(1).fill("やくそく");
   await page.getByRole("button", { name: "Submit answers" }).click();
   await expect(page.getByRole("heading", { name: "Completed review" })).toBeVisible();
@@ -542,6 +741,15 @@ test("progress and manual teacher handoff preserve account isolation", async ({
   await expect(page.getByText("JSON copied.")).toBeVisible();
   const copied = JSON.parse(await page.evaluate(() => navigator.clipboard.readText()));
   expect(teacherContextSchema.safeParse(copied).success).toBe(true);
+  expect(copied.nextPackConstraints).toEqual(nextPackConstraints);
+  expect(
+    copied.recentMistakes.some(
+      (item: { learnerAnswer: string }) => item.learnerAnswer === untrusted,
+    ),
+  ).toBe(true);
+  expect(
+    await page.evaluate(() => (window as unknown as { m7Executed?: number }).m7Executed),
+  ).toBeUndefined();
   expect(
     copied.recentMistakes.some((item: { learnerAnswer: string }) => item.learnerAnswer === "ので"),
   ).toBe(true);

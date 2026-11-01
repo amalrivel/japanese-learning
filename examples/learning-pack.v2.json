@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 2,
+  "kind": "learning-pack",
+  "id": "jlpt-n3-20261101",
+  "title": "Sesi 10 menit: alasan dan cerita perjalanan",
+  "subject": {
+    "id": "japanese",
+    "label": "Bahasa Jepang"
+  },
+  "level": "JLPT N3 awal",
+  "contentLanguage": "ja",
+  "feedbackLanguage": "id",
+  "createdAt": "2026-11-01T00:00:00.000Z",
+  "furigana": "toggle",
+  "skills": [
+    {
+      "id": "grammar.contrast",
+      "label": "Alasan dan pertentangan"
+    },
+    {
+      "id": "writing.story",
+      "label": "Bercerita tentang pengalaman"
+    }
+  ],
+  "materials": [
+    {
+      "id": "contrast-notes",
+      "title": "Baca sebelum latihan",
+      "content": [
+        {
+          "text": "雨",
+          "reading": "あめ"
+        },
+        {
+          "text": "が降っているのに、出かけました。\nのに menunjukkan hasil yang bertentangan dengan dugaan. Ceritakan kejadian dan alasan Anda dalam urutan yang jelas."
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "id": "contrast-choice",
+      "type": "multiple_choice",
+      "skillIds": ["grammar.contrast"],
+      "prompt": [
+        {
+          "text": "雨が降っている（　）、出かけました。Pilih penghubung untuk hasil di luar dugaan."
+        }
+      ],
+      "choices": [
+        {
+          "id": "noni",
+          "text": [
+            {
+              "text": "のに"
+            }
+          ]
+        },
+        {
+          "id": "node",
+          "text": [
+            {
+              "text": "ので"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "contrast-blank",
+      "type": "fill_blank",
+      "skillIds": ["grammar.contrast"],
+      "prompt": [
+        {
+          "text": "Lengkapi: 疲れている{{blank}}、勉強しました。"
+        }
+      ]
+    },
+    {
+      "id": "explain-choice",
+      "type": "short_answer",
+      "skillIds": ["grammar.contrast"],
+      "prompt": [
+        {
+          "text": "Jelaskan perbedaan のに dan ので dengan kata-kata Anda sendiri."
+        }
+      ]
+    },
+    {
+      "id": "commuter-diary",
+      "type": "free_writing",
+      "skillIds": ["writing.story"],
+      "prompt": [
+        {
+          "text": "Tulis nikki tentang perjalanan hari ini. Gunakan topik ini atau pilih pengalaman sendiri; sertakan kejadian, perasaan, dan penutup."
+        }
+      ]
+    },
+    {
+      "id": "story-reflection",
+      "type": "self_review",
+      "skillIds": ["writing.story"],
+      "prompt": [
+        {
+          "text": "Bagian cerita mana yang paling sulit Anda ungkapkan dalam bahasa Jepang? Guru akan menanggapi refleksi ini."
+        }
+      ]
+    }
+  ]
+}

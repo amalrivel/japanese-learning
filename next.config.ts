@@ -33,6 +33,13 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        source: "/api/:path*",
+        headers: [
+          { key: "Cache-Control", value: "private, no-store" },
+          { key: "Vary", value: "Authorization" },
+        ],
+      },
+      {
         source: "/sw.js",
         headers: [
           {

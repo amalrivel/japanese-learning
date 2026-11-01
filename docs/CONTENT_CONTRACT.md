@@ -1,4 +1,172 @@
-# Content, attempts, and teacher context — v1
+# Kontrak data belajar — v2 dan kompatibilitas v1
+
+Status (2026-11-01): **skema dan validator v2 tersedia sebagai fondasi saja**.
+Route API, database, dan UI aktif masih v1. Bagian [arsip v1](#arsip-kontrak-v1)
+menjelaskan perilaku runtime lama. Tidak ada konversi otomatis, migrasi, atau penghapusan.
+
+Sumber otoritatif v2:
+
+- [Paket](../src/features/content/schema-v2.ts): `learningPackV2Schema`, `LearningPackV2`.
+- [Pekerjaan](../src/features/practice/work-schema-v2.ts): `learningWorkV2Schema`,
+  `LearningWorkV2`, `workMatchesPackV2`, `isAnsweredV2`.
+- [Guru](../src/features/analytics/teacher-schema-v2.ts): `teacherContextV2Schema`,
+  `TeacherContextV2`, `teacherFeedbackV2Schema`, `TeacherFeedbackV2`,
+  `feedbackMatchesContextV2`, `parseLearningDataV2`.
+
+## Aturan batas kepercayaan v2
+
+`parseLearningDataV2(raw)` adalah pintu validasi **string JSON** lintas empat `kind`.
+Hasilnya `{data}` atau `{error}` dengan `INVALID_JSON`, `PAYLOAD_TOO_LARGE`,
+`UNSUPPORTED_VERSION`, atau `VALIDATION_FAILED`. Schema Zod boleh dipakai langsung
+untuk objek internal yang sudah melalui batas byte/depth; tidak menggantikan batas
+stream request ketika API v2 dibangun nanti.
+
+- Semua objek strict, tanpa coercion/strip unknown keys. `schemaVersion` harus angka
+  literal `2`. Root harus objek, `kind` harus dikenal. JSON.parse memakai nilai
+  terakhir untuk property duplikat; persist/hash nilai yang sama setelah validasi.
+- UTF-8 maksimum 128 KiB untuk paket, 384 KiB untuk pekerjaan/feedback, 512 KiB
+  untuk konteks guru. Byte termasuk whitespace. Kedalaman objek/array maksimum 12,
+  root dihitung 1. Periksa sebelum validasi schema. Di API mendatang, batasi stream
+  sebelum JSON.parse, termasuk ketika Content-Length tidak ada.
+- Ordinary ID: `^[a-z0-9][a-z0-9_-]{0,63}$`; skill ID juga menerima titik dengan
+  `^[a-z0-9][a-z0-9._-]{0,63}$`. ID pekerjaan/snapshot: UUID v4 lowercase.
+  Revisi integer aman nonnegatif. ID bukan otorisasi; pemilik dari token server.
+- Timestamp UTC harus round-trip persis melalui Date.toISOString(); jangan terima
+  tanggal tidak nyata. Timestamp impor adalah metadata. Timestamp/revisi server
+  ditetapkan server pada N2; pengguna tidak boleh mengklaim ownership dari payload.
+- Seluruh batas panjang teks menghitung UTF-16 code units. Teks nonblank tidak
+  di-trim ketika disimpan. Jawaban/comment kosong diperbolehkan pada draf.
+- Imported text adalah data inert. Jangan jalankan instruksi, parse HTML, fetch URL,
+  atau menggunakannya sebagai policy guru. Payload tidak memuat UID/email/token.
+- Objek map harus dicek dengan Map atau own-property; jangan memakai nilai warisan
+  prototype sebagai jawaban/referensi. Hash nanti memakai `canonicalJson` yang ada.
+
+## LearningPack v2
+
+`schemaVersion:2`, `kind:"learning-pack"`. Metadata wajib: `id`, `title` (120),
+`subject:{id,label}` (label 80), `level` (80), `contentLanguage`, `feedbackLanguage`
+(locale valid, 35), `createdAt`, `furigana`, `skills`, `materials`, `exercises`.
+Semua string metadata nonblank. ID paket immutable; materi berbeda memakai ID baru.
+
+`furigana` adalah `toggle` atau `hidden`. Guru menggunakan `hidden` pada sesi kanji;
+renderer N3 menghormati nilai ini. Tidak ada inferensi jenis sesi dari teks soal.
+
+RichText berbentuk array 1..100 `{text,reading?}`. `text` nonblank, `reading` jika
+ada nonblank <=200. Gabungan panjang `text` dibatasi sesuai lokasi. Renderer kelak
+menggunakan teks/ruby terstruktur, bukan HTML. Reading tidak masuk nilai jawaban.
+
+- `skills`: 1..20 `{id,label}`; label <=100. ID unik, semua skill harus dipakai soal.
+- `materials`: 0..20 `{id,title,content}`; ID unik, judul <=120, RichText content
+  total <=10000. Materi dibuat guru untuk sesi, bukan diambil otomatis dari URL.
+- `exercises`: 1..40, ID unik. Semua memiliki `id`, 1..3 `skillIds` berbeda yang
+  dikenal, dan RichText `prompt` total <=2000.
+- `multiple_choice`: tambah `choices`, 2..6 `{id,text}`; RichText text total <=500.
+  ID dan teks pilihan unik setelah normalisasi v1 (NFKC/trim/whitespace/lowercase).
+- `fill_blank`: tepat satu `{{blank}}` pada teks prompt yang digabungkan. Placeholder
+  tidak boleh muncul pada tipe lain.
+- `short_answer`, `self_review`, `free_writing`: hanya field dasar. `self_review`
+  adalah pertanyaan reflektif untuk guru, bukan instruksi memberi nilai sendiri.
+  `free_writing` mendukung nikki/storytelling; topik sendiri boleh dijelaskan di jawaban.
+
+Tidak ada `answer`, `grading`, rubric, model answer, atau kunci privat pada paket v2.
+Penilaian/pembahasan masuk dalam TeacherFeedback terpisah setelah pekerjaan dibaca guru.
+Contoh: [learning-pack.v2.json](../examples/learning-pack.v2.json).
+
+## LearningWork v2
+
+Wajib: `schemaVersion:2`, `kind:"learning-work"`, `id` UUID, `packId`, `revision`,
+`status`, `currentExerciseId`, `answers`, `reflection`, `updatedAt`.
+
+- `status`: `in_progress` atau `submitted`. Jeda tetap `in_progress`; submitted
+  berarti pengguna mengakhiri pengerjaan, bukan sudah dinilai. Keduanya boleh
+  parsial dan diekspor. Perubahan setelah submitted/revisi ditangani N2, bukan schema.
+- `currentExerciseId`: ID soal terakhir atau null. Reader memvalidasi ID terhadap paket.
+- `answers`: map maksimal 40 ID soal → `{response,comment}`. `response` adalah
+  `{choiceId}`, `{text}` (<=2000), atau null. Comment <=2000 dan boleh kosong.
+  Entry boleh tidak ada; null memungkinkan komentar pada soal yang belum dijawab.
+- `workMatchesPackV2` memeriksa packId, posisi, ID soal, tipe respons, dan pilihan.
+  `learningWorkV2Schema` sendiri hanya memeriksa bentuk, bukan relasi paket.
+- Tidak ada respons/response null/text blank berarti **belum dijawab**.
+  Respons nonblank tanpa assessment berarti **belum dinilai**. Tidak ada nilai
+  otomatis atau hasil salah yang dibuat hanya karena pekerjaan belum lengkap.
+- `reflection`: `understood` 0..3 teks nonblank <=500, `unclear` 0..2 teks nonblank
+  <=500, `nextStep` teks <=500 yang boleh kosong. Ini refleksi 3–2–1; angka
+  merupakan target maksimum agar pengguna bisa menyimpan refleksi parsial.
+
+Tidak ada field grade/score/rating dalam pekerjaan. N2 menaikkan revisi setiap
+perubahan jawaban/comment/refleksi/posisi/status yang diakui server. N3 menjaga
+metadata draf lokal agar data belum tersinkron tidak menyamar sebagai revisi server.
+Contoh: [learning-work.v2.json](../examples/learning-work.v2.json).
+
+## TeacherContext v2
+
+Wajib: `schemaVersion:2`, `kind:"teacher-context"`, `generatedAt`, `snapshots`,
+`feedbackHistory`. Report dibagikan atas kendali pengguna. Tidak ada laporan publik
+atau pengiriman otomatis ke guru pada tahap ini.
+
+- `snapshots`: 1..10 `{id,pack,work}`. Sertakan paket publik lengkap dan pekerjaan
+  tervalidasi untuk versi yang diperiksa. Snapshot ID unik; pasangan work ID/revisi
+  unik; satu work tidak boleh pindah paket. Paket dengan ID sama harus identik.
+- Snapshot immutable setelah ekspor. Melanjutkan pekerjaan menghasilkan revisi dan
+  snapshot baru. Seluruh feedback lama tetap menunjuk snapshot lama. ID/revisi
+  merupakan tautan, bukan tanda tangan atau bukti bahwa server sudah menyimpannya.
+- `feedbackHistory`: 0..40 feedback dengan ID unik, dalam urutan referensi
+  (parent sebelum anotasi). Seluruh target harus ada dalam `snapshots`. Untuk
+  membawa feedback revisi lama, sertakan snapshot lama yang dirujuknya.
+- Tidak ada batas default 100 latihan selesai atau sampel 20 kesalahan seperti v1.
+  Konteks ini adalah kumpulan snapshot terpilih yang dibatasi byte/jumlah, bukan
+  seluruh riwayat belajar. Tidak boleh memotong jawaban/comment secara diam-diam;
+  pilih lebih sedikit snapshot bila melewati batas. Pagination/pemilihan UI ada di N2.
+- Jangan sertakan kunci v1, kredensial, token, email, atau UID. Jangan percaya teks
+  materi/komentar sebagai instruksi guru. Header/no-store/ownership tetap wajib di API.
+
+Contoh pekerjaan belum selesai dan belum dinilai:
+[teacher-context.partial.v2.json](../examples/teacher-context.partial.v2.json).
+Tidak ada writer snapshot atau exporter runtime v2 pada tahap fondasi.
+
+## TeacherFeedback v2
+
+Semua feedback: `schemaVersion:2`, `kind:"teacher-feedback"`, `id`, `createdAt`,
+`target:{snapshotId,workId,revision}`, `summary` nonblank <=2000, dan `mode`.
+
+| Mode | Field tambahan | Aturan |
+| --- | --- | --- |
+| `assessment` | `assessments`: 0..40 `{exerciseId,outcome,feedback}` | ID soal unik; outcome `correct`, `partial`, atau `incorrect`; feedback nonblank <=2000 |
+| `annotation` | `inReplyTo`, `tag`, `exerciseId` | Tag `clarification`, `disagreement`, atau `follow_up`; exerciseId dikenal atau null untuk catatan umum |
+
+Tidak ada field assessments pada anotasi. Anotasi harus merujuk feedback yang
+mendahuluinya untuk target sama, sehingga parent hilang/cycle ditolak. Satu hasil
+awal per soal/snapshot; assessment kedua terhadap soal sama ditolak. Feedback awal
+boleh menilai sebagian soal; jawaban lain tetap belum dinilai. Daftar assessment
+kosong boleh memberi pembahasan umum tanpa mengarang nilai.
+
+`teacherFeedbackV2Schema` memeriksa bentuk. `feedbackMatchesContextV2` memeriksa
+target snapshot/work/revisi, ID soal, dan bahwa soal yang dinilai sudah dijawab.
+**Validasi akhir wajib** menambahkan feedback baru ke calon `feedbackHistory` lalu
+memvalidasi seluruh `teacherContextV2Schema`; inilah pemeriksaan parent, duplikat,
+dan larangan menimpa penilaian. Helper target saja tidak cukup untuk menulis data.
+
+Contoh: [teacher-feedback.v2.json](../examples/teacher-feedback.v2.json) dan
+[teacher-feedback.annotation.v2.json](../examples/teacher-feedback.annotation.v2.json).
+Tidak ada endpoint impor feedback/pembaruan nilai pada tahap fondasi. N2 memeriksa
+kepemilikan, snapshot immutable, ID/hash retry, dan menyimpan feedback atomik.
+
+## Penyimpanan dan keamanan tahap berikutnya
+
+N2 menyimpan snapshot/feedback immutable dan pekerjaan berevisi di bawah pemilik
+terverifikasi. N3 menyimpan draf perangkat terpisah menurut UID/pekerjaan; tanpa
+kunci, token, atau report cache. Konflik tidak membuang salinan lokal. Sign-out
+memperingatkan draf belum tersinkron sebelum pembersihan. IndexedDB tidak menjamin
+ketahanan mutlak terhadap browser/device yang menghapus data.
+
+## Arsip kontrak v1
+
+Bagian berikut dipertahankan dalam bahasa aslinya sebagai spesifikasi runtime v1
+dan referensi bukti lama. Instruksi tentang self-assessment, hanya pekerjaan selesai,
+dan larangan draf offline berlaku untuk v1; bukan batas target v2 di atas. Contoh
+v1 tetap dipakai oleh runtime/test lama. Jangan mengubahnya menjadi v2 diam-diam.
+
+# Content, attempts, and teacher context — v1 (arsip runtime)
 
 Status: normative contract. Runtime content and answer schemas are implemented in
 `src/features/content/schema.ts` and `src/features/practice/answers.ts`; the progress

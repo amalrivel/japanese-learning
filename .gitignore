@@ -28,6 +28,7 @@ ui-debug.log
 # misc
 .DS_Store
 *.pem
+*firebase-adminsdk*.json
 
 # debug
 npm-debug.log*
