@@ -9,26 +9,27 @@ website menjadi tempat materi, latihan, penyimpanan pekerjaan, dan feedback.
 - **Runtime v1:** Google/Firebase Auth dan allowlist, impor paket JSON v1,
   latihan/draf server, penilaian objektif, penilaian mandiri, riwayat, progres,
   dan Teacher Report untuk pertukaran JSON manual.
-- **Fondasi v2:** schema Zod, tipe TypeScript, validator JSON terbatas, dan contoh
-  paket/materi, pekerjaan parsial, snapshot report, feedback, serta anotasi.
-  Belum terhubung ke route API, database, atau tampilan. Halaman impor saat ini
-  **hanya menerima v1**; contoh v2 belum bisa dipakai melalui UI.
-- **Tahap berikutnya:** alur guru v2, satu soal per layar dalam bahasa Indonesia,
-  draf HP + server, furigana, nikki, progres dari feedback guru, dan pemasangan PWA.
-  Materi sepenuhnya offline, audio, Obsidian, API LLM, dan scheduling otomatis ditunda.
+- **Alur manual v2:** `/manual` menerima paket/feedback v2 melalui preview dan
+  konfirmasi; pekerjaan parsial disimpan di server, snapshot dipilih untuk copy
+  atau download, dan assessment/anotasi guru dapat diimpor serta dibaca. Submit
+  mengunci pekerjaan, dapat parsial, dan tidak menilai.
+- **Tahap berikutnya:** satu soal per layar, draf HP + server dan furigana (N3),
+  lalu progres dari feedback guru dan pemasangan PWA (N4). Materi sepenuhnya
+  offline, audio, Obsidian, API LLM, dan scheduling otomatis ditunda.
 
 Panduan: [PRD](docs/PRD.md), [arsitektur](docs/ARCHITECTURE.md),
 [kontrak](docs/CONTENT_CONTRACT.md), [rencana/bukti](docs/IMPLEMENTATION_PLAN.md),
 dan [instruksi agen](AGENTS.md). Riwayat M1–M8 tetap disimpan pada bagian arsip.
 
-## Alur manual yang dituju v2
+## Alur manual v2
 
 Minta guru LLM membuat JSON paket sesuai kontrak/contoh v2 → salin atau pilih file
 untuk preview dan konfirmasi → latihan serta komentar → ekspor snapshot pekerjaan
 apa adanya → berikan ke guru → impor feedback dan paket berikutnya secara terpisah.
 Guru memilih pengulangan/penyesuaian; pengguna memegang kendali setiap pertukaran.
 Diskusi sanggahan di chat dapat menjadi anotasi bertag tanpa menimpa penilaian awal.
-Alur ini masih target integrasi, bukan perilaku v1 saat ini.
+Simpan sebelum membuat snapshot jika perubahan terbaru harus ikut diekspor.
+Perubahan di memori belum bertahan setelah reload sampai tersimpan di server.
 
 Akses baca langsung oleh LLM belum dibuktikan. Memiliki URL/API tidak menjamin LLM
 bisa membaca data terautentikasi. Jangan melemahkan Auth atau membagikan token untuk
@@ -46,7 +47,7 @@ npm ci
 npm run dev
 ```
 
-Buka [localhost:3000](http://localhost:3000). Route aktif: `/import`, `/practice`,
+Buka [localhost:3000](http://localhost:3000). Route aktif mencakup `/manual` untuk v2 dan `/import`, `/practice`,
 `/history`, `/progress`, `/teacher/report`. Konfigurasi Firebase dan UID yang diizinkan
 diperlukan; suite emulator membawa konfigurasi demo terpisah. Jangan memakai data
 atau kredensial produksi untuk tes. Instal devDependencies sebelum build karena
@@ -130,4 +131,4 @@ Ini pemeriksaan read-only, bukan pengganti tes revocation/disabled-user.
 
 Google login hosted, index produksi, native file picker, BFCache restoration,
 dan akses baca langsung LLM tetap membutuhkan bukti masing-masing. PWA install
-serta ketahanan draf lokal v2 belum diimplementasikan pada tahap fondasi.
+serta ketahanan draf lokal v2 belum diimplementasikan.

@@ -1,8 +1,7 @@
 # Arsitektur aplikasi belajar
 
-Status (2026-11-01): runtime masih v1; fondasi skema v2 sudah terpisah dari runtime.
-Bagian v2 di bawah adalah rancangan integrasi tahap berikutnya, bukan klaim fitur
-sudah tersedia. Tujuan produk di [PRD](PRD.md), detail format di
+Status (2026-11-01): runtime v1 dipertahankan dan alur guru manual v2 tersedia
+secara lokal. Kesiapan hosted tetap gate terpisah. Tujuan produk di [PRD](PRD.md), detail format di
 [CONTENT_CONTRACT](CONTENT_CONTRACT.md), urutan/bukti di [rencana](IMPLEMENTATION_PLAN.md).
 
 ## Stack dan batas domain
@@ -37,8 +36,8 @@ Ringkasan memakai maksimal 100 percobaan selesai; report berisi maksimal 20 kesa
 | `POST /api/attempts/{attemptId}/assessments` | Satu penilaian mandiri lengkap |
 | `GET /api/progress`, `GET /api/teacher/context` | Ringkasan/report v1, hanya latihan selesai |
 
-Tidak ada endpoint v2 pada tahap fondasi. Reader v1, route, database, dan UI lama
-belum berubah. Jangan mengirim contoh v2 ke halaman impor lama.
+Reader v1, route, database, dan UI lama dipertahankan. Halaman impor lama tetap
+menerima v1; gunakan `/manual` untuk paket dan feedback v2.
 
 Daftar memakai halaman 20, maksimum 50, dan satu baris tambahan untuk mendeteksi
 halaman berikutnya. Cursor base64url memuat timestamp presisi detik/nanodetik, ID,
@@ -51,15 +50,15 @@ composite `status ASC, completedAt DESC, __name__ DESC` dan
 `packId ASC, createdAt DESC, __name__ DESC`. Pengecualian indeks untuk `exercises`,
 `keys`, `answers`, `results`, `skills`. Keberhasilan emulator bukan bukti indeks cloud siap.
 
-## Alur v2 yang akan disambungkan
+## Alur guru manual v2
 
 1. Pengguna menyalin JSON paket dari guru LLM atau memilih file. Preview memvalidasi
    bentuk, ukuran, referensi, duplikat, dan isi teks sebelum konfirmasi impor.
    Paket v2 berisi materi/soal tanpa kunci penilaian. Kunci v1 tidak dikonversi otomatis.
-2. Website menampilkan satu soal per layar. Jawaban, komentar, refleksi, dan posisi
+2. UI minimum menampilkan soal dalam satu halaman. Jawaban, komentar, refleksi, dan posisi
    terakhir disimpan sebagai pekerjaan berevisi. Jeda tidak menutup sesi; submit
    adalah keputusan pengguna untuk mengakhiri pengerjaan, bukan hasil penilaian.
-3. Saat pengguna meminta laporan, bekukan snapshot bernama yang berisi paket dan
+3. Saat pengguna meminta laporan, bekukan snapshot beridentitas UUID yang berisi paket dan
    versi pekerjaan. Pekerjaan `in_progress` dan belum lengkap tetap boleh diekspor.
    Identitas snapshot/revisi tetap mengacu isi lama meskipun pengguna melanjutkan.
 4. Ekspor hanya snapshot yang dipilih beserta feedback terkait, termasuk snapshot
@@ -75,17 +74,29 @@ composite `status ASC, completedAt DESC, __name__ DESC` dan
 7. Paket berikutnya diimpor terpisah sebagai ID baru. Guru/pengguna mengatur jadwal,
    sumber materi, pengulangan, dan perubahan setelah absen melalui chat eksternal.
 
-Rencana persistensi v2 tetap di bawah `users/{uid}` dan dipisahkan dari koleksi v1:
+Persistensi v2 berada di bawah `users/{uid}` dan dipisahkan dari koleksi v1:
 `learningPacks`, `learningWorks`, `teacherSnapshots`, dan `teacherFeedback`.
-Belum ada implementasi atau migrasi untuk koleksi tersebut. Paket, snapshot, dan
+Tidak ada migrasi otomatis. Paket, isi snapshot, dan
 feedback immutable; pekerjaan aktif diperbarui dengan transaksi revisi. Snapshot
 adalah salinan server yang terverifikasi, bukan bukti otorisasi dari UUID semata.
 
 Operasi membuat snapshot harus berupa mutasi eksplisit; GET konteks tetap read-only.
 Impor feedback idempoten menggunakan ID + hash canonical JSON: identik mengembalikan
 hasil yang sama, isi berbeda pada ID sama ditolak. Perubahan multi-dokumen tidak
-boleh menghasilkan impor sebagian. Endpoint dan transaksi baru dibangun pada N2.
+boleh menghasilkan impor sebagian. Metadata daftar feedback pada snapshot berubah
+secara transaksional; isi snapshot tetap immutable.
 Tidak ada kredensial atau izin tulis khusus untuk LLM.
+
+Route baru berada di `/api/v2`: `packs` (daftar/detail/impor), `works`
+(daftar/mulai/detail/simpan/submit), `snapshots` (daftar/buat), dan
+`teacher/context` serta `teacher/feedback` (ekspor baca/impor). Daftar memakai
+cursor ID dan halaman maksimal 50. Snapshot unik per pekerjaan/revisi; metadata
+operasi di bawah pekerjaan menyimpan receipt untuk retry save/submit. Retry dengan
+operation ID dan isi sama mengembalikan hasil semula; isi berbeda ditolak.
+Work submitted terkunci dan pengerjaan baru memerlukan work ID baru. Submit boleh
+parsial dan tidak menilai. Context membatasi 10 snapshot, 40 feedback, dan 512 KiB;
+riwayat yang melampaui batas ditolak tanpa pemotongan. Penanda feedback per snapshot
+membuat transaksi impor bersamaan membaca dan memvalidasi ulang seluruh riwayat.
 
 ## Penyimpanan draf perangkat — rencana N3
 

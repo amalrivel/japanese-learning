@@ -27,7 +27,15 @@ describe("Firestore client access rules", () => {
     await env?.cleanup();
   });
 
-  it.each(["packs", "packKeys", "attempts"])(
+  it.each([
+    "packs",
+    "packKeys",
+    "attempts",
+    "learningPacks",
+    "learningWorks",
+    "teacherSnapshots",
+    "teacherFeedback",
+  ])(
     "denies anonymous, owner, and cross-UID get/list/create/update/delete for %s",
     async (name) => {
       const path = `users/learner-a/${name}`;

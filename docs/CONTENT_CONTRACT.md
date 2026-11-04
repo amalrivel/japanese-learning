@@ -1,8 +1,8 @@
 # Kontrak data belajar — v2 dan kompatibilitas v1
 
-Status (2026-11-01): **skema dan validator v2 tersedia sebagai fondasi saja**.
-Route API, database, dan UI aktif masih v1. Bagian [arsip v1](#arsip-kontrak-v1)
-menjelaskan perilaku runtime lama. Tidak ada konversi otomatis, migrasi, atau penghapusan.
+Status (2026-11-01): alur manual v2 tersedia secara lokal melalui `/manual` dan
+route `/api/v2`; runtime v1 tetap terpisah. Bagian [arsip v1](#arsip-kontrak-v1)
+menjelaskan runtime lama. Tidak ada konversi otomatis, migrasi, atau penghapusan.
 
 Sumber otoritatif v2:
 
@@ -19,7 +19,7 @@ Sumber otoritatif v2:
 Hasilnya `{data}` atau `{error}` dengan `INVALID_JSON`, `PAYLOAD_TOO_LARGE`,
 `UNSUPPORTED_VERSION`, atau `VALIDATION_FAILED`. Schema Zod boleh dipakai langsung
 untuk objek internal yang sudah melalui batas byte/depth; tidak menggantikan batas
-stream request ketika API v2 dibangun nanti.
+stream request API.
 
 - Semua objek strict, tanpa coercion/strip unknown keys. `schemaVersion` harus angka
   literal `2`. Root harus objek, `kind` harus dikenal. JSON.parse memakai nilai
@@ -33,7 +33,7 @@ stream request ketika API v2 dibangun nanti.
   Revisi integer aman nonnegatif. ID bukan otorisasi; pemilik dari token server.
 - Timestamp UTC harus round-trip persis melalui Date.toISOString(); jangan terima
   tanggal tidak nyata. Timestamp impor adalah metadata. Timestamp/revisi server
-  ditetapkan server pada N2; pengguna tidak boleh mengklaim ownership dari payload.
+  ditetapkan server; pengguna tidak boleh mengklaim ownership dari payload.
 - Seluruh batas panjang teks menghitung UTF-16 code units. Teks nonblank tidak
   di-trim ketika disimpan. Jawaban/comment kosong diperbolehkan pada draf.
 - Imported text adalah data inert. Jangan jalankan instruksi, parse HTML, fetch URL,
@@ -79,7 +79,7 @@ Wajib: `schemaVersion:2`, `kind:"learning-work"`, `id` UUID, `packId`, `revision
 
 - `status`: `in_progress` atau `submitted`. Jeda tetap `in_progress`; submitted
   berarti pengguna mengakhiri pengerjaan, bukan sudah dinilai. Keduanya boleh
-  parsial dan diekspor. Perubahan setelah submitted/revisi ditangani N2, bukan schema.
+  parsial dan diekspor. Submitted terkunci; pengerjaan baru memakai work ID baru.
 - `currentExerciseId`: ID soal terakhir atau null. Reader memvalidasi ID terhadap paket.
 - `answers`: map maksimal 40 ID soal → `{response,comment}`. `response` adalah
   `{choiceId}`, `{text}` (<=2000), atau null. Comment <=2000 dan boleh kosong.
@@ -122,7 +122,7 @@ atau pengiriman otomatis ke guru pada tahap ini.
 
 Contoh pekerjaan belum selesai dan belum dinilai:
 [teacher-context.partial.v2.json](../examples/teacher-context.partial.v2.json).
-Tidak ada writer snapshot atau exporter runtime v2 pada tahap fondasi.
+Snapshot dibuat melalui mutasi eksplisit dari revisi server; GET konteks read-only.
 
 ## TeacherFeedback v2
 
@@ -148,8 +148,9 @@ dan larangan menimpa penilaian. Helper target saja tidak cukup untuk menulis dat
 
 Contoh: [teacher-feedback.v2.json](../examples/teacher-feedback.v2.json) dan
 [teacher-feedback.annotation.v2.json](../examples/teacher-feedback.annotation.v2.json).
-Tidak ada endpoint impor feedback/pembaruan nilai pada tahap fondasi. N2 memeriksa
-kepemilikan, snapshot immutable, ID/hash retry, dan menyimpan feedback atomik.
+Endpoint impor memeriksa kepemilikan, snapshot immutable, ID/hash retry, dan
+menyimpan feedback atomik. Maksimal 40 feedback dapat disimpan untuk satu snapshot;
+penambahan yang membuat konteks melewati 512 KiB ditolak tanpa tulis sebagian.
 
 ## Penyimpanan dan keamanan tahap berikutnya
 

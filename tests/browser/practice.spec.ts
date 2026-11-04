@@ -793,3 +793,167 @@ test("progress and manual teacher handoff preserve account isolation", async ({
   await expect(page.getByText("No completed attempts yet.")).toBeVisible();
   await expect(page.getByText("Answer: ので")).toHaveCount(0);
 });
+
+test("v2 manual teacher loop saves, exports and imports feedback", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin });
+  await signIn(page, "A");
+  await page.goto(`${origin}/manual`);
+  const fixture = JSON.parse(readFileSync("examples/learning-pack.v2.json", "utf8"));
+  fixture.id = "browser-v2-manual";
+  fixture.title = "Paket manual browser";
+  await page.getByLabel("Atau tempel JSON").fill("{");
+  await page.getByRole("button", { name: "Pratinjau", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("tidak valid");
+  await page.getByLabel("Pilih file JSON").setInputFiles({
+    name: "pack.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(fixture)),
+  });
+  await expect(page.getByRole("heading", { name: "Pratinjau paket" })).toBeVisible();
+  await page.evaluate(() => {
+    const original = File.prototype.text;
+    File.prototype.text = async function () {
+      if (this.name === "slow.json") await new Promise((resolve) => setTimeout(resolve, 800));
+      return original.call(this);
+    };
+  });
+  await page
+    .getByLabel("Pilih file JSON")
+    .setInputFiles({
+      name: "slow.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(fixture)),
+    });
+  await expect(page.getByRole("button", { name: "Konfirmasi impor" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Pratinjau paket" })).toBeVisible();
+  await page.getByRole("button", { name: "Konfirmasi impor" }).click();
+  await expect(page.getByRole("status")).toHaveText("Impor berhasil.");
+  await page.getByRole("button", { name: "Mulai pekerjaan" }).last().click();
+  await expect(page.getByRole("heading", { name: fixture.title })).toBeVisible();
+  await page.locator("select").first().selectOption("noni");
+  await page.getByLabel("Komentar atau keraguan").first().fill("Saya ragu");
+  await page.getByLabel("Dipahami 1").fill("Penghubung pertentangan");
+  await page.route("**/api/v2/works/*", async (route) => {
+    if (route.request().method() !== "PATCH") return route.continue();
+    await route.fetch();
+    await route.abort();
+  });
+  await page.getByRole("button", { name: "Simpan ke server" }).click();
+  await expect(page.getByRole("button", { name: "Ulangi permintaan" })).toBeEnabled();
+  await page.unroute("**/api/v2/works/*");
+  await page.getByRole("button", { name: "Ulangi permintaan" }).click();
+  await expect(page.getByRole("status")).toContainText("Revisi 1 tersimpan");
+  await page.getByLabel("Komentar atau keraguan").first().fill("Saya ragu tetapi tetap disimpan");
+  await page.route("**/api/v2/works/*", async (route) => {
+    if (route.request().method() === "PATCH")
+      await route.fulfill({
+        status: 409,
+        contentType: "application/json",
+        body: JSON.stringify({ error: { message: "Konflik revisi" } }),
+      });
+    else await route.continue();
+  });
+  await page.getByRole("button", { name: "Simpan ke server" }).click();
+  await expect(page.getByRole("status")).toHaveText("Konflik revisi");
+  await expect(page.getByLabel("Komentar atau keraguan").first()).toHaveValue(
+    "Saya ragu tetapi tetap disimpan",
+  );
+  await page.unroute("**/api/v2/works/*");
+  await page.getByRole("button", { name: "Simpan ke server" }).click();
+  await expect(page.getByRole("status")).toContainText("Revisi 2 tersimpan");
+  await page.reload();
+  await page.getByRole("button", { name: "Buka", exact: true }).last().click();
+  await expect(page.getByLabel("Komentar atau keraguan").first()).toHaveValue(
+    "Saya ragu tetapi tetap disimpan",
+  );
+  await expect(page.getByLabel("Dipahami 1")).toHaveValue("Penghubung pertentangan");
+  await expect(page.getByRole("link", { name: "contrast-choice" })).toHaveAttribute(
+    "href",
+    "#exercise-contrast-choice",
+  );
+  await page.getByLabel("Komentar atau keraguan").first().fill("Perubahan belum tersimpan");
+  await expect(
+    page.getByText(
+      "Perubahan pekerjaan belum tersimpan tidak termasuk dalam snapshot yang dipilih.",
+    ),
+  ).toBeVisible();
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page.getByRole("link", { name: "Beranda" }).click();
+  await expect(page.getByLabel("Komentar atau keraguan").first()).toHaveValue(
+    "Perubahan belum tersimpan",
+  );
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page.getByRole("button", { name: "Buat snapshot revisi server" }).click();
+  await expect(page.getByRole("checkbox")).toHaveCount(0);
+  await page.getByLabel("Komentar atau keraguan").first().fill("Saya ragu tetapi tetap disimpan");
+  await page.getByRole("button", { name: "Buat snapshot revisi server" }).click();
+  await expect(page.getByRole("status")).toContainText("Snapshot revisi 2 dibuat");
+  await page.getByRole("checkbox").last().check();
+  await page.getByRole("button", { name: "Muat konteks" }).click();
+  await expect(page.getByText("Belum dinilai", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Salin JSON" }).click();
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  const exported = JSON.parse(copied);
+  expect(exported.snapshots[0].work.answers["contrast-choice"].comment).toBe(
+    "Saya ragu tetapi tetap disimpan",
+  );
+  expect(exported.snapshots[0].work.currentExerciseId).toBe("contrast-choice");
+  const downloading = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Unduh JSON" }).click();
+  const download = await downloading;
+  expect(JSON.parse(await readFileSync(await download.path(), "utf8"))).toEqual(exported);
+  const target = {
+    snapshotId: exported.snapshots[0].id,
+    workId: exported.snapshots[0].work.id,
+    revision: 2,
+  };
+  const feedback = JSON.parse(readFileSync("examples/teacher-feedback.v2.json", "utf8"));
+  feedback.target = target;
+  feedback.assessments = [feedback.assessments[0]];
+  await page.getByLabel("Atau tempel JSON").fill(JSON.stringify(feedback));
+  await page.getByRole("button", { name: "Pratinjau", exact: true }).click();
+  await page.getByRole("button", { name: "Konfirmasi impor" }).click();
+  await expect(page.getByRole("status")).toHaveText("Impor berhasil.");
+  const annotation = JSON.parse(
+    readFileSync("examples/teacher-feedback.annotation.v2.json", "utf8"),
+  );
+  annotation.target = target;
+  await page.getByLabel("Atau tempel JSON").fill(JSON.stringify(annotation));
+  await page.getByRole("button", { name: "Pratinjau", exact: true }).click();
+  await page.getByRole("button", { name: "Konfirmasi impor" }).click();
+  await expect(page.getByRole("status")).toHaveText("Impor berhasil.");
+  await page.getByRole("button", { name: "Muat konteks" }).click();
+  await expect(page.getByText("Penilaian guru", { exact: false })).toBeVisible();
+  await expect(page.getByText("Hasil guru: benar", { exact: true })).toBeVisible();
+  await expect(page.getByText("Anotasi: clarification", { exact: false })).toBeVisible();
+  fixture.id = "browser-v2-follow-up";
+  fixture.title = "Paket berikutnya";
+  await page.getByLabel("Atau tempel JSON").fill(JSON.stringify(fixture));
+  await page.getByRole("button", { name: "Pratinjau", exact: true }).click();
+  await page.getByRole("button", { name: "Konfirmasi impor" }).click();
+  await expect(page.getByText("Paket berikutnya", { exact: true })).toBeVisible();
+  let releaseContext!: () => void;
+  let sawContext!: () => void;
+  const held = new Promise<void>((resolve) => {
+    releaseContext = resolve;
+  });
+  const seen = new Promise<void>((resolve) => {
+    sawContext = resolve;
+  });
+  await page.route("**/api/v2/teacher/context?*", async (route) => {
+    const response = await route.fetch();
+    sawContext();
+    await held;
+    await route.fulfill({ response }).catch(() => {});
+  });
+  await page.getByRole("button", { name: "Muat konteks" }).click();
+  await seen;
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page.getByRole("heading", { name: "Sign in to continue" })).toBeVisible();
+  releaseContext();
+  await page.unroute("**/api/v2/teacher/context?*");
+  await signIn(page, "B");
+  await page.goto(`${origin}/manual`);
+  await expect(page.getByText("Paket manual browser", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Penilaian guru", { exact: false })).toHaveCount(0);
+});

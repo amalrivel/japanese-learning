@@ -1,6 +1,7 @@
 import { ModeToggle } from "@/components/mode-toggle";
 
 const routes = [
+  ["Alur guru manual v2", "/manual"],
   ["Practice", "/practice"],
   ["History", "/history"],
   ["Progress", "/progress"],

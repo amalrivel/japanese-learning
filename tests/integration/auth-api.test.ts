@@ -175,6 +175,15 @@ describe("authenticated API boundary", () => {
       "/api/attempts/11111111-1111-4111-8111-111111111111/assessments",
       "/api/progress",
       "/api/teacher/context",
+      "/api/v2/packs",
+      "/api/v2/packs/import",
+      "/api/v2/packs/example",
+      "/api/v2/works",
+      "/api/v2/works/11111111-1111-4111-8111-111111111111",
+      "/api/v2/works/11111111-1111-4111-8111-111111111111/submit",
+      "/api/v2/snapshots",
+      "/api/v2/teacher/context",
+      "/api/v2/teacher/feedback",
     ];
     for (const path of paths) {
       for (const method of ["OPTIONS", "HEAD"]) {
@@ -1262,6 +1271,233 @@ describe("authenticated API boundary", () => {
         beforeKeys.updateTime!,
       ),
     ).toBe(true);
+    await db.recursiveDelete(root);
+  }, 60000);
+
+  it("runs the v2 manual loop with immutable snapshots and atomic feedback", async () => {
+    assertDemoEmulators();
+    const fixture = JSON.parse(readFileSync("examples/learning-pack.v2.json", "utf8"));
+    const sampleWork = JSON.parse(readFileSync("examples/learning-work.v2.json", "utf8"));
+    const sampleFeedback = JSON.parse(readFileSync("examples/teacher-feedback.v2.json", "utf8"));
+    const annotation = JSON.parse(
+      readFileSync("examples/teacher-feedback.annotation.v2.json", "utf8"),
+    );
+    const workId = "11111111-1111-4111-8111-111111111111";
+    const snapshotId = "22222222-2222-4222-8222-222222222222";
+    const operationId = "33333333-3333-4333-8333-333333333333";
+    const base = "http://127.0.0.1:3100/api/v2";
+    const send = (path: string, method = "GET", body?: unknown, owner = 0) =>
+      fetch(`${base}${path}`, {
+        method,
+        headers: { Authorization: `Bearer ${tokens[owner]}`, "Content-Type": "application/json" },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+    const db = getFirestore(adminApp);
+    const root = db.collection("users").doc(users[0].uid);
+    expect((await send("/packs/import", "POST", { ...fixture, exercises: [] })).status).toBe(422);
+    expect((await root.collection("learningPacks").get()).empty).toBe(true);
+    expect((await send("/packs/import", "POST", fixture)).status).toBe(201);
+    expect((await send("/packs/import", "POST", fixture)).status).toBe(200);
+    expect((await send("/packs/import", "POST", { ...fixture, title: "berbeda" })).status).toBe(
+      409,
+    );
+    expect((await send(`/packs/${fixture.id}`, "GET", undefined, 1)).status).toBe(404);
+    const start = { workId, packId: fixture.id };
+    expect((await send("/works", "POST", start)).status).toBe(201);
+    expect((await send("/works", "POST", start)).status).toBe(200);
+    const edit = {
+      operationId,
+      expectedRevision: 0,
+      answers: sampleWork.answers,
+      reflection: sampleWork.reflection,
+      currentExerciseId: sampleWork.currentExerciseId,
+    };
+    const saved = await send(`/works/${workId}`, "PATCH", edit);
+    expect(saved.status).toBe(200);
+    const savedWork = await saved.json();
+    expect(savedWork.revision).toBe(1);
+    expect(savedWork.answers).toEqual(sampleWork.answers);
+    expect(savedWork.reflection).toEqual(sampleWork.reflection);
+    expect(await (await send(`/works/${workId}`, "PATCH", edit)).json()).toEqual(savedWork);
+    expect((await send(`/works/${workId}`, "PATCH", { ...edit, answers: {} })).status).toBe(409);
+    expect(
+      (
+        await send(`/works/${workId}`, "PATCH", {
+          ...edit,
+          operationId: "44444444-4444-4444-8444-444444444444",
+        })
+      ).status,
+    ).toBe(409);
+    const workBeforeGet = await root.collection("learningWorks").doc(workId).get();
+    const packBeforeGet = await root.collection("learningPacks").doc(fixture.id).get();
+    expect((await (await send(`/works/${workId}`)).json()).work).toEqual(savedWork);
+    expect((await send(`/packs/${fixture.id}`)).status).toBe(200);
+    expect(
+      (await root.collection("learningWorks").doc(workId).get()).updateTime!.isEqual(
+        workBeforeGet.updateTime!,
+      ),
+    ).toBe(true);
+    expect(
+      (await root.collection("learningPacks").doc(fixture.id).get()).updateTime!.isEqual(
+        packBeforeGet.updateTime!,
+      ),
+    ).toBe(true);
+    expect((await send(`/works/${workId}`, "GET", undefined, 1)).status).toBe(404);
+    const snapshotRequest = { snapshotId, workId, expectedRevision: 1 };
+    const firstSnapshot = await send("/snapshots", "POST", snapshotRequest);
+    expect(firstSnapshot.status).toBe(201);
+    const snapshot = await firstSnapshot.json();
+    expect(await (await send("/snapshots", "POST", snapshotRequest)).json()).toEqual(snapshot);
+    const nextEdit = {
+      ...edit,
+      operationId: "55555555-5555-4555-8555-555555555555",
+      expectedRevision: 1,
+      answers: {},
+    };
+    const competingEdit = {
+      ...nextEdit,
+      operationId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      reflection: { ...nextEdit.reflection, nextStep: "Perubahan lain" },
+    };
+    const saves = await Promise.all([
+      send(`/works/${workId}`, "PATCH", nextEdit),
+      send(`/works/${workId}`, "PATCH", competingEdit),
+    ]);
+    expect(saves.map((response) => response.status).sort()).toEqual([200, 409]);
+    const snapshotBeforeRetry = await root.collection("teacherSnapshots").doc(snapshotId).get();
+    expect(await (await send("/snapshots", "POST", snapshotRequest)).json()).toEqual(snapshot);
+    expect(
+      (await root.collection("teacherSnapshots").doc(snapshotId).get()).updateTime!.isEqual(
+        snapshotBeforeRetry.updateTime!,
+      ),
+    ).toBe(true);
+    const feedback = { ...sampleFeedback, target: { snapshotId, workId, revision: 1 } };
+    expect(
+      (
+        await send("/teacher/feedback", "POST", {
+          ...feedback,
+          target: { ...feedback.target, revision: 2 },
+        })
+      ).status,
+    ).toBe(422);
+    expect(
+      (
+        await send("/teacher/feedback", "POST", {
+          ...feedback,
+          assessments: [{ exerciseId: "contrast-blank", outcome: "incorrect", feedback: "x" }],
+        })
+      ).status,
+    ).toBe(422);
+    expect((await root.collection("teacherFeedback").get()).empty).toBe(true);
+    const competing = { ...feedback, id: "feedback-competing" };
+    const results = await Promise.all([
+      send("/teacher/feedback", "POST", feedback),
+      send("/teacher/feedback", "POST", competing),
+    ]);
+    expect(results.map((response) => response.status).sort()).toEqual([201, 422]);
+    const winner = results[0].status === 201 ? feedback : competing;
+    const feedbackBeforeRetry = await root.collection("teacherFeedback").doc(winner.id).get();
+    expect((await send("/teacher/feedback", "POST", winner)).status).toBe(200);
+    expect(
+      (await root.collection("teacherFeedback").doc(winner.id).get()).updateTime!.isEqual(
+        feedbackBeforeRetry.updateTime!,
+      ),
+    ).toBe(true);
+    const note = { ...annotation, target: winner.target, inReplyTo: winner.id };
+    expect(
+      (await send("/teacher/feedback", "POST", { ...note, inReplyTo: "missing" })).status,
+    ).toBe(422);
+    expect((await send("/teacher/feedback", "POST", note)).status).toBe(201);
+    const snapshotRef = root.collection("teacherSnapshots").doc(snapshotId);
+    const before = await snapshotRef.get();
+    const contextResponse = await send(`/teacher/context?snapshotId=${snapshotId}`);
+    expect(contextResponse.status).toBe(200);
+    const context = await contextResponse.json();
+    expect(context.snapshots[0]).toEqual(snapshot);
+    expect(context.feedbackHistory).toEqual([winner, note]);
+    expect((await snapshotRef.get()).updateTime!.isEqual(before.updateTime!)).toBe(true);
+    expect(
+      (await send(`/teacher/context?snapshotId=${snapshotId}`, "GET", undefined, 1)).status,
+    ).toBe(404);
+    expect(
+      (
+        await send(`/works/${workId}/submit`, "POST", {
+          operationId: "66666666-6666-4666-8666-666666666666",
+          expectedRevision: 2,
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await send(`/works/${workId}`, "PATCH", {
+          ...nextEdit,
+          operationId: "77777777-7777-4777-8777-777777777777",
+          expectedRevision: 3,
+        })
+      ).status,
+    ).toBe(409);
+    expect(
+      (await send("/teacher/feedback", "POST", { ...winner, id: "other-owner" }, 1)).status,
+    ).toBe(404);
+    expect(
+      (
+        await send(
+          `/teacher/context?${Array.from({ length: 11 }, () => `snapshotId=${snapshotId}`).join("&")}`,
+        )
+      ).status,
+    ).toBe(422);
+    for (let index = 0; index < 38; index++) {
+      const extra = { ...winner, id: `extra-${index}`, assessments: [] };
+      expect((await send("/teacher/feedback", "POST", extra)).status).toBe(201);
+    }
+    const full = await send(`/teacher/context?snapshotId=${snapshotId}`);
+    expect((await full.json()).feedbackHistory).toHaveLength(40);
+    expect(
+      (await send("/teacher/feedback", "POST", { ...winner, id: "over-limit", assessments: [] }))
+        .status,
+    ).toBe(413);
+    expect((await root.collection("teacherFeedback").doc("over-limit").get()).exists).toBe(false);
+
+    const largePack = structuredClone(fixture);
+    largePack.id = "large-context-pack";
+    largePack.skills = [largePack.skills[0]];
+    largePack.materials = [];
+    largePack.exercises = Array.from({ length: 40 }, (_, index) => ({
+      id: `q${index}`,
+      type: "short_answer",
+      skillIds: [largePack.skills[0].id],
+      prompt: [{ text: "p".repeat(1800) }],
+    }));
+    const largeAnswers = Object.fromEntries(
+      largePack.exercises.map((item: { id: string }) => [
+        item.id,
+        { response: { text: "a".repeat(2000) }, comment: "b".repeat(2000) },
+      ]),
+    );
+    const largeSnapshotIds = Array.from(
+      { length: 3 },
+      (_, index) => `99999999-9999-4999-8999-99999999999${index}`,
+    );
+    for (let index = 0; index < largeSnapshotIds.length; index++) {
+      const id = largeSnapshotIds[index];
+      const bigWork = {
+        ...savedWork,
+        id: `88888888-8888-4888-8888-88888888888${index}`,
+        packId: largePack.id,
+        currentExerciseId: null,
+        answers: largeAnswers,
+      };
+      await root
+        .collection("teacherSnapshots")
+        .doc(id)
+        .set({
+          snapshot: { id, pack: largePack, work: bigWork },
+          feedbackIds: [],
+          createdAt: savedWork.updatedAt,
+        });
+    }
+    const largeQuery = largeSnapshotIds.map((id) => `snapshotId=${id}`).join("&");
+    expect((await send(`/teacher/context?${largeQuery}`)).status).toBe(413);
     await db.recursiveDelete(root);
   }, 60000);
 

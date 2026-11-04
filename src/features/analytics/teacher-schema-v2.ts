@@ -5,6 +5,7 @@ import {
   nonblankV2,
   revisionV2Schema,
   utcV2Schema,
+  withinDepthV2,
 } from "@/features/content/schema-v2";
 import { attemptIdSchema } from "@/features/practice/answers";
 import {
@@ -157,17 +158,7 @@ export function parseLearningDataV2(raw: string) {
   } catch {
     return { error: "INVALID_JSON" as const };
   }
-  const stack = [{ value, depth: 1 }];
-  while (stack.length) {
-    const item = stack.pop()!;
-    if (item.value !== null && typeof item.value === "object") {
-      if (item.depth > 12) return { error: "VALIDATION_FAILED" as const };
-      for (const child of Object.values(item.value)) {
-        if (child !== null && typeof child === "object")
-          stack.push({ value: child, depth: item.depth + 1 });
-      }
-    }
-  }
+  if (!withinDepthV2(value)) return { error: "VALIDATION_FAILED" as const };
   if (typeof value === "object" && value !== null && !Array.isArray(value)) {
     if (Object.hasOwn(value, "schemaVersion") && Reflect.get(value, "schemaVersion") !== 2) {
       return { error: "UNSUPPORTED_VERSION" as const };

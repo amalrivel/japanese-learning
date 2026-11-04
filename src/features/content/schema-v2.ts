@@ -89,3 +89,18 @@ export const learningPackV2Schema = z
   });
 
 export type LearningPackV2 = z.infer<typeof learningPackV2Schema>;
+
+export function withinDepthV2(value: unknown) {
+  const stack = [{ value, depth: 1 }];
+  while (stack.length) {
+    const item = stack.pop()!;
+    if (item.value !== null && typeof item.value === "object") {
+      if (item.depth > 12) return false;
+      for (const child of Object.values(item.value)) {
+        if (child !== null && typeof child === "object")
+          stack.push({ value: child, depth: item.depth + 1 });
+      }
+    }
+  }
+  return true;
+}

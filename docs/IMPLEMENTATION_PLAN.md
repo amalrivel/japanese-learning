@@ -11,7 +11,7 @@ Indonesia; catatan historis di bagian arsip dipertahankan dalam bentuk aslinya.
 | --- | --- | --- |
 | N0 Penyelarasan panduan | Selesai | Enam panduan selaras, target dibedakan dari runtime v1 |
 | N1 Fondasi data v2 | Selesai | Skema, tipe, contoh dan tes ringan; tanpa perubahan runtime |
-| N2 Alur guru manual | Belum dimulai | Impor paket → pekerjaan → snapshot → impor feedback/anotasi |
+| N2 Alur guru manual | Selesai secara lokal | Impor paket → pekerjaan → snapshot → impor feedback/anotasi |
 | N3 Pengalaman komuter | Belum dimulai | Bahasa Indonesia, satu soal per layar, materi/furigana, nikki, draf HP + server |
 | N4 Progres dan PWA | Belum dimulai | Aktivitas vs hasil guru, target belajar, halaman utama sesi berikutnya, pemasangan online |
 | N5 Verifikasi akhir | Belum dimulai | Suite lengkap dan gate hosted yang terbukti, bukan diasumsikan |
@@ -91,6 +91,42 @@ paket baru tetap impor terpisah, bukan output AI yang dieksekusi otomatis.
 **Gate akhir alur:** emulator/rules untuk ownership, retry, snapshot dan konflik;
 browser smoke untuk loop manual, unit lengkap dan build. Catat gate hosted terpisah.
 
+### Bukti N2 (2026-11-01)
+
+Alur `/manual` dan route `/api/v2` tersambung ke koleksi v2 terpisah. Paket,
+isi snapshot, dan feedback immutable; transaksi pekerjaan memakai revisi dan
+receipt retry. Submit boleh parsial, tidak menilai, dan mengunci pekerjaan.
+Snapshot dibuat dari revisi server; ekspor memberi batas cakupan dan memperingatkan
+perubahan yang belum tersimpan. Impor feedback memvalidasi konteks lengkap dalam
+transaksi dan serialisasi per snapshot mencegah assessment bersaing. UI memuat
+hasil untuk revisi terpilih dan mempertahankan input saat konflik.
+
+- `npm run test:unit`: PASS, 38 tes. `npm run lint` dan `npm run typecheck`: PASS.
+- `npm run test:emulators`: PASS pada `demo-learning-pwa`, 12 tes integrasi dan
+  7 tes rules. Termasuk dua save/assessment bersamaan, retry dan timestamp,
+  snapshot lama, referensi salah, rollback, 40 feedback, konteks >512 KiB,
+  isolasi UID, GET read-only, serta header `HEAD`/`OPTIONS` v2.
+- `npm run test:e2e:emulators`: PASS, 11 tes. Setelah penyesuaian UI, ulangan
+  terfokus alur v2 juga PASS: impor file/paste dan pergantian file lambat, resume, posisi, retry respons
+  hilang, konflik dan navigasi, ekspor copy/download, feedback/anotasi, paket
+  berikutnya, serta pergantian akun dengan respons tertunda.
+- Production build: PASS di salinan sementara dengan environment bersih dan tanpa
+  `.env`; build langsung dalam sandbox gagal pada pemeriksaan TypeScript. Ulangan
+  pertama konfigurasi npm kosong gagal karena dua konfigurasi memakai path sama;
+  ulangan dengan dua file kosong terpisah lulus.
+- `graphify update .`: PASS, AST-only; fallback sequential setelah ekstraksi paralel
+  ditolak sandbox. Graph memiliki 3409 node dan 5319 edge; label semantik tidak
+  diperbarui. Cadangan graph historis yang sudah ada dipertahankan.
+- Contoh JSON v2 dan path tautan lokal panduan diperiksa; `git diff --check` PASS.
+
+Tes memakai Auth/Firestore emulator demo dan Chrome lokal; metadata lookup memberi
+peringatan jaringan tetapi tes lulus. Hosted auth/index/rules/HTTPS, revocation,
+native file picker, BFCache restoration, dan akses baca langsung LLM belum terbukti.
+Tidak ada deployment, perubahan cloud, dependency baru, atau data produksi. Draf
+perangkat, recovery offline, satu soal per layar, dan furigana interaktif tetap N3;
+input yang belum tersimpan hanya berada di memori dan dapat hilang saat navigasi
+atau perangkat ditutup. N3 dapat dimulai; keberhasilan lokal bukan kesiapan rilis.
+
 ## N3 — Pengalaman komuter
 
 Gunakan komponen/token yang ada dan skill UI/UX/Base UI. Bahasa Indonesia, satu soal
@@ -131,7 +167,7 @@ belum terbukti, ekspor manual tetap jalur utama. Deployment menunggu permintaan 
 
 ## Bukti N0–N1 (2026-11-01)
 
-N0 dan N1 selesai; N2 menjadi tahap berikutnya. Keenam panduan diselaraskan, tiga
+Pada saat bukti ini dicatat, N0 dan N1 selesai; N2 menjadi tahap berikutnya. Keenam panduan diselaraskan, tiga
 modul schema v2 dan satu berkas tes ditambahkan, serta lima contoh JSON v2 tersedia.
 Skema/tipenya belum dipakai route, database, atau UI. Tidak ada dependency baru.
 
