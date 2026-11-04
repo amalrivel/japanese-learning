@@ -17,6 +17,24 @@
         { "fieldPath": "createdAt", "order": "DESCENDING" },
         { "fieldPath": "__name__", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "learningWorks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "work.status", "order": "ASCENDING" },
+        { "fieldPath": "work.updatedAt", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "teacherFeedback",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "feedback.mode", "order": "ASCENDING" },
+        { "fieldPath": "importedAt", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [
@@ -29,6 +47,18 @@
     { "collectionGroup": "learningWorks", "fieldPath": "work", "indexes": [] },
     { "collectionGroup": "operations", "fieldPath": "work", "indexes": [] },
     { "collectionGroup": "teacherSnapshots", "fieldPath": "snapshot", "indexes": [] },
-    { "collectionGroup": "teacherFeedback", "fieldPath": "feedback", "indexes": [] }
+    { "collectionGroup": "teacherFeedback", "fieldPath": "feedback", "indexes": [] },
+    { "collectionGroup": "learningWorks", "fieldPath": "work.updatedAt", "indexes": [
+      { "order": "ASCENDING", "queryScope": "COLLECTION" },
+      { "order": "DESCENDING", "queryScope": "COLLECTION" }
+    ] },
+    { "collectionGroup": "learningWorks", "fieldPath": "work.status", "indexes": [
+      { "order": "ASCENDING", "queryScope": "COLLECTION" },
+      { "order": "DESCENDING", "queryScope": "COLLECTION" }
+    ] },
+    { "collectionGroup": "teacherFeedback", "fieldPath": "feedback.mode", "indexes": [
+      { "order": "ASCENDING", "queryScope": "COLLECTION" },
+      { "order": "DESCENDING", "queryScope": "COLLECTION" }
+    ] }
   ]
 }

@@ -50,6 +50,19 @@ composite `status ASC, completedAt DESC, __name__ DESC` dan
 `packId ASC, createdAt DESC, __name__ DESC`. Pengecualian indeks untuk `exercises`,
 `keys`, `answers`, `results`, `skills`. Keberhasilan emulator bukan bukti indeks cloud siap.
 
+## Progres dan beranda v2
+
+`GET /api/v2/progress` dan `GET /api/v2/home` memakai UID token dan header
+private/no-store. `PUT /api/v2/home` memvalidasi dan menyimpan pilihan paket pada
+`users/{uid}/settings/learning`; GET tetap read-only. Query pekerjaan mengambil
+100 terbaru berdasarkan `work.updatedAt`; query assessment mengambil 100 feedback
+terbaru berdasarkan `importedAt` dan hanya membaca snapshot yang dirujuk. Masing-masing
+membaca satu dokumen ekstra untuk mendeteksi batas. Query pekerjaan aktif beranda
+terpisah. Konfigurasi indeks mengecualikan map besar dan mengindeks hanya field query;
+indeks cloud dan pemasangan hosted memerlukan verifikasi terpisah.
+
+Tidak ada service worker atau cache privat untuk PWA online.
+
 ## Alur guru manual v2
 
 1. Pengguna menyalin JSON paket dari guru LLM atau memilih file. Preview memvalidasi

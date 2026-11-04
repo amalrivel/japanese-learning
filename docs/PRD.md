@@ -1,7 +1,7 @@
 # Personalized Learning — arah produk v2
 
 Status (2026-11-02): runtime v1 dipertahankan; alur guru manual dan pengalaman
-komuter v2 tersedia secara lokal. Progres v2 dan PWA masih N4. Lihat [rencana implementasi](IMPLEMENTATION_PLAN.md) untuk bukti
+komuter v2 tersedia secara lokal. Progres v2 dan PWA online tersedia secara lokal pada N4. Lihat [rencana implementasi](IMPLEMENTATION_PLAN.md) untuk bukti
 setiap tahap, [arsitektur](ARCHITECTURE.md) untuk batas sistem, dan
 [kontrak data](CONTENT_CONTRACT.md) untuk format yang sah.
 

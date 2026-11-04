@@ -41,6 +41,7 @@ export function ManualLearning() {
   const [context, setContext] = useState<TeacherContextV2 | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showReading, setShowReading] = useState(true);
   const [draftView, setDraftView] = useState<DraftView | null>(null);
   const pending = draftView?.pending ?? false;
   const controller = useRef<AbortController | null>(null);
@@ -126,6 +127,22 @@ export function ManualLearning() {
             setMessage("Daftar tidak dapat dimuat.");
         });
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!user) return;
+    const params = new URLSearchParams(window.location.search);
+    const workId = params.get("work");
+    const packId = params.get("pack");
+    if (workId) void Promise.resolve().then(() => run(() => openWork(workId, true)));
+    else if (packId)
+      void Promise.resolve().then(() =>
+        run(async () => {
+          const result = await call<{ pack: LearningPackV2 }>(
+            `/api/v2/packs/${encodeURIComponent(packId)}`,
+          );
+          setPack(result.pack);
+        }),
+      );
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
   async function nextPage<T>(url: string, page: Page<T>, setPage: (page: Page<T>) => void) {
     if (!page.nextCursor) return;
     const next = await call<Page<T>>(`${url}?cursor=${encodeURIComponent(page.nextCursor)}`);
@@ -182,6 +199,51 @@ export function ManualLearning() {
         <p role="status" className="rounded-md border p-3">
           {message}
         </p>
+      )}
+      {pack && !work && (
+        <section className="space-y-3">
+          <h2 className="text-xl font-semibold">Materi: {pack.title}</h2>
+          {pack.furigana === "toggle" && (
+            <Button variant="outline" onClick={() => setShowReading(!showReading)}>
+              {showReading ? "Sembunyikan furigana" : "Tampilkan furigana"}
+            </Button>
+          )}
+          {pack.materials.map((item) => (
+            <article key={item.id}>
+              <h3 className="font-medium">{item.title}</h3>
+              <p>
+                {item.content.map((part, index) =>
+                  part.reading && pack.furigana !== "hidden" && showReading ? (
+                    <ruby key={index}>
+                      {part.text}
+                      <rt>{part.reading}</rt>
+                    </ruby>
+                  ) : (
+                    part.text
+                  ),
+                )}
+              </p>
+            </article>
+          ))}
+          <Button
+            disabled={busy}
+            onClick={() =>
+              void run(async () => {
+                const id = (startIds.current[pack.id] ??= crypto.randomUUID());
+                await call("/api/v2/works", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ workId: id, packId: pack.id }),
+                });
+                delete startIds.current[pack.id];
+                await openWork(id, true);
+                await refresh();
+              })
+            }
+          >
+            Mulai pekerjaan
+          </Button>
+        </section>
       )}
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Impor paket atau feedback</h2>

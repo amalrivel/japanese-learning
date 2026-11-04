@@ -1215,7 +1215,9 @@ test("N3 commuter draft survives offline editing and reload", async ({ page, con
   await page.getByRole("button", { name: "Mulai latihan" }).focus();
   await page.keyboard.press("Enter");
   await expect(page.getByText("Soal 1 dari 5")).toBeVisible();
+  await expect(page.locator("h3:focus")).toBeVisible();
   await page.getByRole("button", { name: "Berikutnya" }).focus();
+  await expect(page.getByRole("button", { name: "Berikutnya" })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.getByText("Soal 2 dari 5")).toBeVisible();
   await expect(page.getByLabel("Jawaban", { exact: true })).toHaveAttribute("maxlength", "2000");
@@ -1923,4 +1925,43 @@ test("device account transitions finish cleanup before a new session opens", asy
     };
   });
   expect(result).toEqual({ drafts: 0, epoch: 1, marker: "transition-a" });
+});
+
+test("N4 home selects a session and opens its material on mobile", async ({ page }) => {
+  const pack = JSON.parse(readFileSync("examples/learning-pack.v2.json", "utf8"));
+  pack.id = "n4-home-fixture";
+  pack.title = "Sesi N4 untuk beranda";
+  const root = getFirestore(app).collection("users").doc(users[0]);
+  await root.collection("learningPacks").doc(pack.id).set({ pack });
+  await page.setViewportSize({ width: 375, height: 750 });
+  await signIn(page, "A");
+  await page.goto(origin);
+  await expect(page.getByRole("heading", { name: "Sesi berikutnya" })).toBeVisible();
+  await page.getByText("Pilih atau ganti sesi").click();
+  await page.getByRole("button", { name: pack.title, exact: true }).click();
+  await expect(page.getByRole("link", { name: "Lihat materi dan mulai" })).toBeVisible();
+  await page.reload();
+  await page.getByRole("link", { name: "Lihat materi dan mulai" }).click();
+  await expect(page.getByRole("heading", { name: `Materi: ${pack.title}` })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Mulai pekerjaan" }).first()).toBeVisible();
+  const manifest = await (await page.request.get(`${origin}/manifest.webmanifest`)).json();
+  expect(manifest.start_url).toBe("/");
+  expect(
+    await page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length),
+  ).toBe(0);
+  expect(await page.evaluate(async () => await caches.keys())).toEqual([]);
+  expect(manifest.icons.map((icon: { sizes: string }) => icon.sizes)).toEqual([
+    "192x192",
+    "512x512",
+  ]);
+  for (const icon of manifest.icons)
+    expect((await page.request.get(`${origin}${icon.src}`)).ok()).toBe(true);
+  await page.evaluate(async () => {
+    await (window as unknown as { testSwitchAccount: () => Promise<unknown> }).testSwitchAccount();
+  });
+  await page.goto(origin);
+  await expect(page.getByRole("heading", { name: "Sesi berikutnya" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Lihat materi dan mulai" })).toHaveCount(0);
+  await root.collection("settings").doc("learning").delete();
+  await root.collection("learningPacks").doc(pack.id).delete();
 });

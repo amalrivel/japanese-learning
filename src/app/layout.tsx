@@ -19,14 +19,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Personalized Learning PWA",
-  description: "A private workspace for personalized learning.",
+  title: "Personalized Learning",
+  icons: { apple: "/apple-touch-icon.png" },
+  description: "Ruang belajar bahasa Jepang pribadi secara online.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="en"
+      lang="id"
       className={cn(
         "h-full",
         "antialiased",

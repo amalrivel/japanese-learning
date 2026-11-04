@@ -13,7 +13,7 @@ Indonesia; catatan historis di bagian arsip dipertahankan dalam bentuk aslinya.
 | N1 Fondasi data v2 | Selesai | Skema, tipe, contoh dan tes ringan; tanpa perubahan runtime |
 | N2 Alur guru manual | Selesai secara lokal | Impor paket → pekerjaan → snapshot → impor feedback/anotasi |
 | N3 Pengalaman komuter | Selesai secara lokal | Bahasa Indonesia, satu soal per layar, materi/furigana, nikki, draf HP + server |
-| N4 Progres dan PWA | Belum dimulai | Aktivitas vs hasil guru, target belajar, halaman utama sesi berikutnya, pemasangan online |
+| N4 Progres dan PWA | Selesai secara lokal | Aktivitas vs hasil guru, target belajar, halaman utama sesi berikutnya, pemasangan online |
 | N5 Verifikasi akhir | Belum dimulai | Suite lengkap dan gate hosted yang terbukti, bukan diasumsikan |
 
 M1–M6 adalah implementasi v1 yang telah diuji. M7 masih memiliki gate hosted dan
@@ -183,6 +183,32 @@ sebagai nilai baru. Tampilkan cakupan data dan jangan membuat klaim mastery otom
 Halaman utama mendahulukan sesi berikutnya serta lanjutkan pekerjaan. Perbarui
 manifest/ikon/identitas dan verifikasi pemasangan online. Pengguna/guru tetap memilih
 ritme dan pengulangan; tidak ada scheduling atau notifikasi otomatis pada tahap ini.
+
+### Bukti N4 (2026-11-05)
+
+Beranda menyimpan pilihan sesi dan membaca pekerjaan aktif dengan query terpisah.
+Progres memakai maksimal 100 pekerjaan terakhir dan 100 assessment terakhir; retry,
+snapshot, dan anotasi tidak dihitung sebagai kegiatan atau nilai baru. Rentang dan
+pemotongan ditampilkan, sedangkan hasil di luar jendela tidak diketahui. Assessment
+terkait snapshot lama tetap masuk berdasarkan waktu impor. Target adalah JLPT N3
+Desember 2026 dan sesi sekitar 10 menit, bukan durasi yang diukur. Manifest dan ikon
+menyediakan pemasangan online tanpa service worker; jaringan tetap diperlukan.
+
+- `npm run lint` dan `npm run typecheck`: PASS. `npm run test:unit`: PASS, 39 tes.
+- `npm run test:emulators`: PASS pada project demo, 13 integrasi dan 7 rules.
+  Ulangan terfokus batas global 100 assessment dan pekerjaan aktif: PASS.
+- Browser emulator: 24 dari 25 tes awal lulus; satu tes N3 mengalami race fokus.
+  Tes diperbaiki untuk menunggu fokus judul dan tombol, lalu ulangan terfokus N3
+  dan N4: PASS (2 tes), termasuk viewport ponsel, pemilihan sesi, pergantian akun,
+  manifest/ikon, serta pemeriksaan service worker dan cache kosong.
+- Build produksi: PASS dalam salinan sementara tanpa `.env` atau kredensial.
+  Penyalinan juga mencoba file konfigurasi PostCSS yang tidak ada di proyek; file
+  yang ada tetap disalin dan build selesai. `graphify update .`: AST-only, 3479
+  node dan 5606 edge; fallback sequential setelah paralel ditolak sandbox.
+
+Emulator tidak membuktikan indeks hosted tersedia. Pemasangan aktual pada browser
+atau ponsel fisik, keyboard fisik, hosted auth/index/rules/HTTPS dan gate rilis
+masih N5. Tidak ada deployment, perubahan cloud, atau dependency baru.
 
 ## N5 — Verifikasi akhir dan rilis
 

@@ -1501,6 +1501,77 @@ describe("authenticated API boundary", () => {
     await db.recursiveDelete(root);
   }, 60000);
 
+  it("bounds v2 progress by assessment import and finds older active work", async () => {
+    const db = getFirestore(adminApp);
+    const root = db.collection("users").doc(users[0].uid);
+    const pack = JSON.parse(readFileSync("examples/learning-pack.v2.json", "utf8"));
+    const work = JSON.parse(readFileSync("examples/learning-work.v2.json", "utf8"));
+    const feedback = JSON.parse(readFileSync("examples/teacher-feedback.v2.json", "utf8"));
+    const snapshotId = feedback.target.snapshotId;
+    const snapshot = { id: snapshotId, pack, work };
+    const batch = db.batch();
+    batch.set(root.collection("learningPacks").doc(pack.id), { pack });
+    batch.set(root.collection("teacherSnapshots").doc(snapshotId), {
+      snapshot,
+      feedbackIds: [feedback.id],
+      createdAt: "2020-01-01T00:00:00.000Z",
+    });
+    batch.set(root.collection("teacherFeedback").doc(feedback.id), {
+      feedback,
+      importedAt: "2026-11-03T00:00:00.000Z",
+    });
+    batch.set(root.collection("learningWorks").doc(work.id), {
+      work: { ...work, status: "in_progress", updatedAt: "2020-01-01T00:00:00.000Z" },
+    });
+    for (let i = 0; i < 101; i++) {
+      const id = `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`;
+      batch.set(root.collection("learningWorks").doc(id), {
+        work: { ...work, id, status: "submitted", updatedAt: "2026-11-02T00:00:00.000Z" },
+      });
+    }
+    for (let i = 0; i < 100; i++) {
+      const id = `10000000-0000-4000-8000-${String(i).padStart(12, "0")}`;
+      const feedbackId = `n4-assessment-${i}`;
+      batch.set(root.collection("teacherSnapshots").doc(id), {
+        snapshot: { id, pack, work: { ...work, id } },
+        feedbackIds: [feedbackId],
+        createdAt: "2020-01-01T00:00:00.000Z",
+      });
+      batch.set(root.collection("teacherFeedback").doc(feedbackId), {
+        feedback: {
+          ...feedback,
+          id: feedbackId,
+          target: { ...feedback.target, snapshotId: id, workId: id },
+          assessments: [],
+        },
+        importedAt: "2026-11-01T00:00:00.000Z",
+      });
+    }
+    await batch.commit();
+    const call = (path: string, owner = 0, init: RequestInit = {}) =>
+      fetch(`http://127.0.0.1:3100/api/v2/${path}`, {
+        ...init,
+        headers: { Authorization: `Bearer ${tokens[owner]}`, "Content-Type": "application/json" },
+      });
+    const response = await call("progress");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    const progress = await response.json();
+    expect(progress.workWindow).toMatchObject({ count: 100, truncated: true });
+    expect(progress.assessmentWindow).toMatchObject({ count: 100, truncated: true });
+    expect(progress.results[0].id).toBe(feedback.id);
+    expect((await (await call("home")).json()).work.id).toBe(work.id);
+    expect((await (await call("progress", 1)).json()).workWindow.count).toBe(0);
+    expect(
+      (await call("home", 1, { method: "PUT", body: JSON.stringify({ packId: pack.id }) })).status,
+    ).toBe(404);
+    expect(
+      (await call("home", 0, { method: "PUT", body: JSON.stringify({ packId: pack.id }) })).status,
+    ).toBe(200);
+    expect((await (await call("home")).json()).pack.id).toBe(pack.id);
+    await db.recursiveDelete(root);
+  }, 60000);
+
   it("fails safely when the server Firebase project is misconfigured", async () => {
     await stopServer();
     await startServer({ FIREBASE_PROJECT_ID: "wrong-project" });

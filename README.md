@@ -16,8 +16,10 @@ website menjadi tempat materi, latihan, penyimpanan pekerjaan, dan feedback.
 - **Pengalaman komuter v2:** satu soal per layar, materi dan furigana terstruktur,
   serta draf HP IndexedDB yang disinkronkan ke server. Konflik dan kegagalan storage
   ditampilkan; pengguna dapat menyimpan darurat ke server atau menyalin input.
-- **Tahap berikutnya:** progres dari feedback guru dan pemasangan PWA (N4). Materi
-  sepenuhnya offline, audio, Obsidian, API LLM, dan scheduling otomatis ditunda.
+- **Progres dan PWA v2:** beranda memilih sesi berikutnya, melanjutkan pekerjaan,
+  dan menunjukkan aktivitas serta assessment dalam jendela terpisah. Aplikasi
+  dapat ditambahkan ke layar utama browser yang mendukung; tetap memerlukan jaringan.
+  Materi offline, audio, Obsidian, API LLM, dan scheduling otomatis ditunda.
 
 Panduan: [PRD](docs/PRD.md), [arsitektur](docs/ARCHITECTURE.md),
 [kontrak](docs/CONTENT_CONTRACT.md), [rencana/bukti](docs/IMPLEMENTATION_PLAN.md),
@@ -38,6 +40,19 @@ gagal atau dihapus browser, dan membuka ulang materi tetap memerlukan jaringan.
 Akses baca langsung oleh LLM belum dibuktikan. Memiliki URL/API tidak menjamin LLM
 bisa membaca data terautentikasi. Jangan melemahkan Auth atau membagikan token untuk
 mengakalinya; ekspor manual tetap jalur awal yang didukung.
+
+## Progres dan pemasangan
+
+Pilih sesi berikutnya di beranda; pilihan tersimpan untuk akun dan dapat diganti.
+Progres aktivitas mencakup maksimal 100 pekerjaan berdasarkan perubahan server terakhir;
+assessment mencakup maksimal 100 feedback penilaian berdasarkan waktu impor server.
+Snapshot, retry, dan anotasi bukan pekerjaan atau nilai baru. Revisi yang dinilai
+lebih dari sekali adalah pengamatan terpisah, bukan ukuran penguasaan. Jawaban tanpa
+penilaian dalam jendela belum tentu tidak pernah dinilai. Zona waktu mengikuti perangkat.
+
+Pada Android gunakan menu browser untuk memasang atau menambahkan ke layar utama;
+pada iPhone gunakan Bagikan lalu Tambah ke Layar Utama. Opsi berbeda antar-browser.
+Aplikasi ini online dan tidak menjanjikan materi tersedia tanpa jaringan.
 
 ## Menjalankan aplikasi
 
