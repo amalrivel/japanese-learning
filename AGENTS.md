@@ -48,13 +48,14 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Respons privat/laporan tidak masuk shared cache, prerender, service-worker cache,
   atau log. Token, kunci jawaban, dan laporan tidak disimpan dalam cache bersama.
   Kredensial/token tidak masuk repository. `.env*`, `.aws/`, `.codex/` lokal bukan dokumentasi.
-- Pengecualian terencana untuk v2: draf lokal berisi jawaban, komentar, refleksi,
+- Draf lokal v2 berisi jawaban, komentar, refleksi,
   posisi terakhir, dan metadata revisi; pisahkan menurut UID/pekerjaan. Jangan
-  menyimpan token/kunci/laporan dalam draf. Bersihkan saat sign-out/ganti akun dengan
-  peringatan pekerjaan belum tersinkron; konflik tidak boleh menimpa diam-diam.
+  menyimpan token/kunci/laporan dalam draf. Peringatkan sebelum sign-out yang dapat
+  dibatalkan; jika akun berubah dari luar tab, segera isolasi dan bersihkan draf lama
+  tanpa dialog. Konflik tidak boleh menimpa diam-diam.
   Penyimpanan lokal dapat gagal/terhapus; tampilkan status yang jujur.
 - Draf lokal bukan izin membuat cache data privat atau menjanjikan aplikasi offline.
-  Implementasi penyimpanan lokal tetap tahap N3.
+  Ketahanan mutlak tidak dijamin; laporkan kegagalan penyimpanan dengan jujur.
 
 ## Pengujian dan cakupan
 

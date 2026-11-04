@@ -13,9 +13,11 @@ website menjadi tempat materi, latihan, penyimpanan pekerjaan, dan feedback.
   konfirmasi; pekerjaan parsial disimpan di server, snapshot dipilih untuk copy
   atau download, dan assessment/anotasi guru dapat diimpor serta dibaca. Submit
   mengunci pekerjaan, dapat parsial, dan tidak menilai.
-- **Tahap berikutnya:** satu soal per layar, draf HP + server dan furigana (N3),
-  lalu progres dari feedback guru dan pemasangan PWA (N4). Materi sepenuhnya
-  offline, audio, Obsidian, API LLM, dan scheduling otomatis ditunda.
+- **Pengalaman komuter v2:** satu soal per layar, materi dan furigana terstruktur,
+  serta draf HP IndexedDB yang disinkronkan ke server. Konflik dan kegagalan storage
+  ditampilkan; pengguna dapat menyimpan darurat ke server atau menyalin input.
+- **Tahap berikutnya:** progres dari feedback guru dan pemasangan PWA (N4). Materi
+  sepenuhnya offline, audio, Obsidian, API LLM, dan scheduling otomatis ditunda.
 
 Panduan: [PRD](docs/PRD.md), [arsitektur](docs/ARCHITECTURE.md),
 [kontrak](docs/CONTENT_CONTRACT.md), [rencana/bukti](docs/IMPLEMENTATION_PLAN.md),
@@ -29,7 +31,9 @@ apa adanya → berikan ke guru → impor feedback dan paket berikutnya secara te
 Guru memilih pengulangan/penyesuaian; pengguna memegang kendali setiap pertukaran.
 Diskusi sanggahan di chat dapat menjadi anotasi bertag tanpa menimpa penilaian awal.
 Simpan sebelum membuat snapshot jika perubahan terbaru harus ikut diekspor.
-Perubahan di memori belum bertahan setelah reload sampai tersimpan di server.
+Perubahan otomatis disimpan di HP sebelum dikirim; status membedakan simpan HP
+atau server. Tunggu penyimpanan selesai sebelum meninggalkan halaman. Storage dapat
+gagal atau dihapus browser, dan membuka ulang materi tetap memerlukan jaringan.
 
 Akses baca langsung oleh LLM belum dibuktikan. Memiliki URL/API tidak menjamin LLM
 bisa membaca data terautentikasi. Jangan melemahkan Auth atau membagikan token untuk
@@ -131,4 +135,5 @@ Ini pemeriksaan read-only, bukan pengganti tes revocation/disabled-user.
 
 Google login hosted, index produksi, native file picker, BFCache restoration,
 dan akses baca langsung LLM tetap membutuhkan bukti masing-masing. PWA install
-serta ketahanan draf lokal v2 belum diimplementasikan.
+tetap membutuhkan bukti terpisah. Penyimpanan draf lokal tidak menjamin data tidak
+akan dihapus oleh browser atau perangkat.

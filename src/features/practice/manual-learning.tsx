@@ -8,7 +8,9 @@ import { canonicalJson } from "@/features/content/schema";
 import type { LearningPackV2 } from "@/features/content/schema-v2";
 import { useAuth } from "@/lib/auth/client";
 import { request } from "./request";
-import { isAnsweredV2, type LearningWorkV2 } from "./work-schema-v2";
+import type { LearningWorkV2 } from "./work-schema-v2";
+import { CommuterWork } from "./commuter-work";
+import type { DraftView } from "./commuter-draft";
 
 type PackItem = { id: string; title: string };
 type SnapshotItem = { id: string; title: string; workId: string; revision: number };
@@ -18,14 +20,12 @@ type Preview = Extract<
 >;
 type Page<T> = { items: T[]; nextCursor: string | null };
 type Editable = Pick<LearningWorkV2, "answers" | "reflection" | "currentExerciseId">;
-type Mutation = { method: "PATCH" | "POST"; url: string; body: unknown };
 const editable = (work: LearningWorkV2): Editable => ({
   answers: work.answers,
   reflection: work.reflection,
   currentExerciseId: work.currentExerciseId,
 });
 const outcomeLabel = { correct: "benar", partial: "sebagian", incorrect: "belum tepat" } as const;
-const text = (segments: { text: string }[]) => segments.map((segment) => segment.text).join("");
 
 export function ManualLearning() {
   const { user } = useAuth();
@@ -41,7 +41,8 @@ export function ManualLearning() {
   const [context, setContext] = useState<TeacherContextV2 | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [pending, setPending] = useState<Mutation | null>(null);
+  const [draftView, setDraftView] = useState<DraftView | null>(null);
+  const pending = draftView?.pending ?? false;
   const controller = useRef<AbortController | null>(null);
   const fileGeneration = useRef(0);
   const startIds = useRef<Record<string, string>>({});
@@ -51,8 +52,14 @@ export function ManualLearning() {
   useEffect(() => {
     const active = new AbortController();
     controller.current = active;
+    const onAccountChange = () => {
+      active.abort();
+      fileGeneration.current++;
+    };
+    window.addEventListener("learning:account-change", onAccountChange);
     return () => {
       active.abort();
+      window.removeEventListener("learning:account-change", onAccountChange);
       controller.current = null;
     };
   }, [user?.uid]);
@@ -61,11 +68,11 @@ export function ManualLearning() {
       if (dirty || pending) event.preventDefault();
     }
     function signout(event: Event) {
-      if (
-        (dirty || pending) &&
-        !window.confirm("Ada pekerjaan yang belum dipastikan tersimpan. Keluar?")
-      )
-        event.preventDefault();
+      if (dirty || pending) {
+        if (!window.confirm("Ada pekerjaan yang belum dipastikan tersimpan. Keluar?"))
+          event.preventDefault();
+        else if (event instanceof CustomEvent) event.detail.confirmed = true;
+      }
     }
     window.addEventListener("beforeunload", beforeUnload);
     window.addEventListener("learning:signout", signout);
@@ -151,60 +158,7 @@ export function ManualLearning() {
     setWork(result.work);
     setPack(result.pack);
     setDraft(editable(result.work));
-    setPending(null);
-  }
-  async function executeMutation(mutation: Mutation) {
-    setPending(mutation);
-    let result: LearningWorkV2;
-    try {
-      result = await call<LearningWorkV2>(mutation.url, {
-        method: mutation.method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(mutation.body),
-      });
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        "status" in error &&
-        typeof error.status === "number" &&
-        error.status >= 400 &&
-        error.status < 500
-      )
-        setPending(null);
-      throw error;
-    }
-    setWork(result);
-    setDraft(editable(result));
-    setPending(null);
-    setMessage(`Revisi ${result.revision} tersimpan di server.`);
-    await refresh();
-  }
-  function save() {
-    if (!work || !draft) return;
-    void run(() =>
-      executeMutation(
-        pending ?? {
-          method: "PATCH",
-          url: `/api/v2/works/${work.id}`,
-          body: { operationId: crypto.randomUUID(), expectedRevision: work.revision, ...draft },
-        },
-      ),
-    );
-  }
-  function markPosition(id: string) {
-    setDraft((current) =>
-      current && current.currentExerciseId !== id ? { ...current, currentExerciseId: id } : current,
-    );
-  }
-  function setAnswer(id: string, value: LearningWorkV2["answers"][string]) {
-    setDraft(
-      (current) =>
-        current && {
-          ...current,
-          currentExerciseId: id,
-          answers: { ...current.answers, [id]: value },
-        },
-    );
+    setDraftView(null);
   }
   const inputClass = "w-full rounded-md border bg-background p-2 text-base";
   return (
@@ -393,203 +347,29 @@ export function ManualLearning() {
       </section>
       {work && pack && draft && (
         <section className="space-y-4">
-          <h2 className="text-xl font-semibold">{pack.title}</h2>
-          <p>
-            Revisi server {work.revision} ·{" "}
-            {work.status === "in_progress" ? "sedang dikerjakan" : "diakhiri"} ·{" "}
-            {dirty ? "Ada perubahan belum tersimpan" : "Tidak ada perubahan belum tersimpan"}
-          </p>
-          {draft.currentExerciseId && (
-            <p>
-              Posisi terakhir:{" "}
-              <a className="underline" href={`#exercise-${draft.currentExerciseId}`}>
-                {draft.currentExerciseId}
-              </a>
-            </p>
-          )}
-          {pending && (
-            <p role="alert">
-              Hasil simpan belum dipastikan. Ulangi permintaan yang sama sebelum mengubah pekerjaan.
-            </p>
-          )}
-          <fieldset
-            disabled={busy || !!pending || work.status === "submitted"}
-            className="space-y-5 disabled:opacity-70"
-          >
-            {pack.materials.map((material) => (
-              <div key={material.id}>
-                <h3 className="font-medium">{material.title}</h3>
-                <p className="whitespace-pre-wrap">{text(material.content)}</p>
-              </div>
-            ))}
-            {pack.exercises.map((exercise) => {
-              const answer = Object.hasOwn(draft.answers, exercise.id)
-                ? draft.answers[exercise.id]
-                : { response: null, comment: "" };
-              const selectedSnapshot = context?.snapshots.find(
-                (snapshot) =>
-                  snapshot.work.id === work.id && snapshot.work.revision === work.revision,
-              );
-              const assessment = context?.feedbackHistory
-                .flatMap((feedback) =>
-                  feedback.mode === "assessment" &&
-                  feedback.target.snapshotId === selectedSnapshot?.id
-                    ? feedback.assessments
-                    : [],
-                )
-                .find((item) => item.exerciseId === exercise.id);
-              return (
-                <div
-                  id={`exercise-${exercise.id}`}
-                  className="space-y-2 rounded-md border p-4"
-                  key={exercise.id}
-                >
-                  <h3 className="font-medium">{text(exercise.prompt)}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {!isAnsweredV2(answer.response)
-                      ? "Belum dijawab"
-                      : dirty
-                        ? "Perubahan belum dinilai"
-                        : !selectedSnapshot
-                          ? "Sudah dijawab — muat snapshot untuk melihat penilaian"
-                          : assessment
-                            ? `Hasil guru: ${outcomeLabel[assessment.outcome]}`
-                            : "Belum dinilai"}
-                  </p>
-                  {exercise.type === "multiple_choice" ? (
-                    <label className="block">
-                      Jawaban
-                      <select
-                        className={inputClass}
-                        aria-label={`Jawaban: ${text(exercise.prompt)}`}
-                        onFocus={() => markPosition(exercise.id)}
-                        value={
-                          answer.response && "choiceId" in answer.response
-                            ? answer.response.choiceId
-                            : ""
-                        }
-                        onChange={(event) =>
-                          setAnswer(exercise.id, {
-                            ...answer,
-                            response: event.target.value ? { choiceId: event.target.value } : null,
-                          })
-                        }
-                      >
-                        <option value="">Belum dijawab</option>
-                        {exercise.choices.map((choice) => (
-                          <option value={choice.id} key={choice.id}>
-                            {text(choice.text)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  ) : (
-                    <label className="block">
-                      Jawaban
-                      <textarea
-                        className={inputClass}
-                        aria-label={`Jawaban: ${text(exercise.prompt)}`}
-                        onFocus={() => markPosition(exercise.id)}
-                        value={
-                          answer.response && "text" in answer.response ? answer.response.text : ""
-                        }
-                        onChange={(event) =>
-                          setAnswer(exercise.id, {
-                            ...answer,
-                            response: { text: event.target.value },
-                          })
-                        }
-                      />
-                    </label>
-                  )}
-                  <label className="block">
-                    Komentar atau keraguan
-                    <textarea
-                      className={inputClass}
-                      aria-label={`Komentar atau keraguan: ${text(exercise.prompt)}`}
-                      onFocus={() => markPosition(exercise.id)}
-                      value={answer.comment}
-                      onChange={(event) =>
-                        setAnswer(exercise.id, { ...answer, comment: event.target.value })
-                      }
-                    />
-                  </label>
-                </div>
-              );
-            })}
-            <div className="space-y-2">
-              <h3 className="font-medium">Refleksi parsial</h3>
-              {(["understood", "unclear"] as const).map((field) => (
-                <div key={field} className="space-y-2">
-                  <p>{field === "understood" ? "Hal yang dipahami" : "Hal yang belum jelas"}</p>
-                  {Array.from({ length: field === "understood" ? 3 : 2 }, (_, index) => (
-                    <label className="block" key={index}>
-                      {field === "understood" ? "Dipahami" : "Belum jelas"} {index + 1}
-                      <input
-                        className={inputClass}
-                        value={draft.reflection[field][index] ?? ""}
-                        disabled={index > draft.reflection[field].length}
-                        onChange={(event) => {
-                          const values = [...draft.reflection[field]];
-                          if (event.target.value) values[index] = event.target.value;
-                          else values.splice(index, 1);
-                          setDraft({
-                            ...draft,
-                            reflection: { ...draft.reflection, [field]: values },
-                          });
-                        }}
-                      />
-                    </label>
-                  ))}
-                </div>
-              ))}
-              <label className="block">
-                Pertanyaan atau langkah berikutnya
-                <textarea
-                  className={inputClass}
-                  value={draft.reflection.nextStep}
-                  onChange={(event) =>
-                    setDraft({
-                      ...draft,
-                      reflection: { ...draft.reflection, nextStep: event.target.value },
-                    })
-                  }
-                />
-              </label>
-            </div>
-          </fieldset>
-          {work.status === "in_progress" && (
-            <div className="flex flex-wrap gap-2">
-              <Button disabled={busy} onClick={save}>
-                {pending ? "Ulangi permintaan" : "Simpan ke server"}
-              </Button>
-              <Button
-                variant="outline"
-                disabled={busy || dirty || !!pending}
-                onClick={() =>
-                  void run(() =>
-                    executeMutation({
-                      method: "POST",
-                      url: `/api/v2/works/${work.id}/submit`,
-                      body: { operationId: crypto.randomUUID(), expectedRevision: work.revision },
-                    }),
-                  )
-                }
-              >
-                Akhiri pekerjaan
-              </Button>
-            </div>
-          )}
+          <CommuterWork
+            key={work.id}
+            user={user!}
+            initialWork={work}
+            pack={pack}
+            context={context}
+            onView={(view) => {
+              setDraftView(view);
+              setWork(view.work);
+              setDraft(view.editable);
+            }}
+          />
           <Button
             variant="outline"
-            disabled={busy || !!pending}
+            disabled={busy}
             onClick={() =>
               void run(async () => {
                 if (
-                  dirty &&
-                  !window.confirm(
-                    `Perubahan belum tersimpan tidak akan masuk snapshot. Buat snapshot revisi server ${work.revision}?`,
-                  )
+                  dirty ||
+                  (pending &&
+                    !window.confirm(
+                      `Perubahan belum tersimpan tidak akan masuk snapshot. Buat snapshot revisi server ${work.revision}?`,
+                    ))
                 )
                   return;
                 const key = `${work.id}:${work.revision}`;
@@ -614,8 +394,11 @@ export function ManualLearning() {
       )}
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Snapshot dan feedback guru</h2>
-        {dirty && (
-          <p>Perubahan pekerjaan belum tersimpan tidak termasuk dalam snapshot yang dipilih.</p>
+        {(dirty || pending) && (
+          <p>
+            Perubahan yang belum dipastikan tersimpan di server tidak termasuk dalam snapshot yang
+            dipilih.
+          </p>
         )}
         <p>
           Pilih hingga 10 snapshot; konteks memuat hanya revisi yang dipilih dan feedback terkait.

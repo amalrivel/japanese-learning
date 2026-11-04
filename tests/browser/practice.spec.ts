@@ -51,6 +51,41 @@ import { getFirebaseAuth } from "@/lib/firebase/client";
 export default function DemoSignIn() { return <main><button onClick={async () => { await signInWithEmailAndPassword(await getFirebaseAuth(), "m4-browser-a@example.test", "${password}"); location.href = "/practice"; }}>Demo A</button><button onClick={async () => { await signInWithEmailAndPassword(await getFirebaseAuth(), "m4-browser-b@example.test", "${password}"); location.href = "/practice"; }}>Demo B</button></main>; }
 `,
   );
+  await writeFile(
+    join(directory, "src/app/test-auth-helper.tsx"),
+    `"use client";
+import { useEffect } from "react";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { getFirebaseAuth } from "@/lib/firebase/client";
+export function TestAuthHelper() {
+  useEffect(() => { Object.assign(window, { testSwitchAccount: async () => signInWithEmailAndPassword(await getFirebaseAuth(), "m4-browser-b@example.test", "${password}") }); }, []);
+  return null;
+}`,
+  );
+  const temporaryLayout = join(directory, "src/app/layout.tsx");
+  const layoutText = readFileSync(temporaryLayout, "utf8");
+  await writeFile(
+    temporaryLayout,
+    layoutText
+      .replace(
+        'import "./globals.css";',
+        'import "./globals.css";\nimport { TestAuthHelper } from "./test-auth-helper";',
+      )
+      .replace("<DraftAccountGuard />", "<DraftAccountGuard /><TestAuthHelper />"),
+  );
+  const draftDirectory = join(directory, "src/app/test-draft-store");
+  await mkdir(draftDirectory, { recursive: true });
+  await writeFile(
+    join(draftDirectory, "page.tsx"),
+    `"use client";
+import { useEffect } from "react";
+import * as store from "@/features/practice/draft-store";
+import { CommuterDraft } from "@/features/practice/commuter-draft";
+export default function DraftStoreTest() {
+  useEffect(() => { Object.assign(window, { testDraftStore: store, TestCommuterDraft: CommuterDraft }); }, []);
+  return <main>Draft store test</main>;
+}`,
+  );
   app = initializeApp({ projectId: "demo-learning-pwa" }, "m4-browser");
   for (const uid of users) {
     try {
@@ -817,33 +852,40 @@ test("v2 manual teacher loop saves, exports and imports feedback", async ({ page
       return original.call(this);
     };
   });
-  await page
-    .getByLabel("Pilih file JSON")
-    .setInputFiles({
-      name: "slow.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(JSON.stringify(fixture)),
-    });
+  await page.getByLabel("Pilih file JSON").setInputFiles({
+    name: "slow.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(fixture)),
+  });
   await expect(page.getByRole("button", { name: "Konfirmasi impor" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Pratinjau paket" })).toBeVisible();
   await page.getByRole("button", { name: "Konfirmasi impor" }).click();
   await expect(page.getByRole("status")).toHaveText("Impor berhasil.");
   await page.getByRole("button", { name: "Mulai pekerjaan" }).last().click();
   await expect(page.getByRole("heading", { name: fixture.title })).toBeVisible();
-  await page.locator("select").first().selectOption("noni");
-  await page.getByLabel("Komentar atau keraguan").first().fill("Saya ragu");
-  await page.getByLabel("Dipahami 1").fill("Penghubung pertentangan");
+  await expect(page.getByText("Tersimpan di server", { exact: true })).toBeVisible();
+  const operationIds: string[] = [];
   await page.route("**/api/v2/works/*", async (route) => {
     if (route.request().method() !== "PATCH") return route.continue();
-    await route.fetch();
-    await route.abort();
+    operationIds.push((route.request().postDataJSON() as { operationId: string }).operationId);
+    if (operationIds.length === 1) {
+      await route.fetch();
+      await route.abort();
+    } else await route.continue();
   });
-  await page.getByRole("button", { name: "Simpan ke server" }).click();
-  await expect(page.getByRole("button", { name: "Ulangi permintaan" })).toBeEnabled();
+  await page.getByRole("button", { name: "Mulai latihan" }).click();
+  await expect(page.getByText(/Belum tersinkron/)).toBeVisible();
+  await page.getByRole("button", { name: "Coba sinkronkan" }).click();
+  await expect(page.getByText("Tersimpan di server.", { exact: true })).toBeVisible();
+  expect(operationIds[0]).toBe(operationIds[1]);
   await page.unroute("**/api/v2/works/*");
-  await page.getByRole("button", { name: "Ulangi permintaan" }).click();
-  await expect(page.getByRole("status")).toContainText("Revisi 1 tersimpan");
-  await page.getByLabel("Komentar atau keraguan").first().fill("Saya ragu tetapi tetap disimpan");
+  await page.getByLabel("のに", { exact: true }).check();
+  await page.getByLabel("Komentar atau keraguan").fill("Saya ragu");
+  await page.getByRole("button", { name: "Refleksi", exact: true }).click();
+  await page.getByLabel("Dipahami 1").fill("Penghubung pertentangan");
+  await expect(page.getByText("Tersimpan di server.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Materi", exact: true }).click();
+  await page.getByRole("button", { name: "Mulai latihan" }).click();
   await page.route("**/api/v2/works/*", async (route) => {
     if (route.request().method() === "PATCH")
       await route.fulfill({
@@ -853,41 +895,56 @@ test("v2 manual teacher loop saves, exports and imports feedback", async ({ page
       });
     else await route.continue();
   });
-  await page.getByRole("button", { name: "Simpan ke server" }).click();
-  await expect(page.getByRole("status")).toHaveText("Konflik revisi");
-  await expect(page.getByLabel("Komentar atau keraguan").first()).toHaveValue(
+  await page.getByLabel("Komentar atau keraguan").fill("Saya ragu tetapi tetap disimpan");
+  await expect(page.getByText("Revisi server berubah. Draf HP tetap dipertahankan.")).toBeVisible();
+  await expect(page.getByLabel("Komentar atau keraguan")).toHaveValue(
     "Saya ragu tetapi tetap disimpan",
   );
   await page.unroute("**/api/v2/works/*");
-  await page.getByRole("button", { name: "Simpan ke server" }).click();
-  await expect(page.getByRole("status")).toContainText("Revisi 2 tersimpan");
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Gunakan draf HP" }).click();
+  await expect(page.getByText("Tersimpan di server.", { exact: true })).toBeVisible();
   await page.reload();
   await page.getByRole("button", { name: "Buka", exact: true }).last().click();
-  await expect(page.getByLabel("Komentar atau keraguan").first()).toHaveValue(
+  await expect(page.getByText("Soal 1 dari 5")).toBeVisible();
+  await expect(page.getByLabel("Komentar atau keraguan")).toHaveValue(
     "Saya ragu tetapi tetap disimpan",
   );
+  await page.getByRole("button", { name: "Refleksi", exact: true }).click();
   await expect(page.getByLabel("Dipahami 1")).toHaveValue("Penghubung pertentangan");
-  await expect(page.getByRole("link", { name: "contrast-choice" })).toHaveAttribute(
-    "href",
-    "#exercise-contrast-choice",
-  );
-  await page.getByLabel("Komentar atau keraguan").first().fill("Perubahan belum tersimpan");
+  await page.getByRole("button", { name: "Materi", exact: true }).click();
+  await page.getByRole("button", { name: "Mulai latihan" }).click();
+  await page.route("**/api/v2/works/*", async (route) => {
+    if (route.request().method() === "PATCH") await route.abort();
+    else await route.continue();
+  });
+  await page.getByLabel("Komentar atau keraguan").fill("Perubahan belum tersimpan");
+  await expect(page.getByText(/Draf tersimpan di HP/)).toBeVisible();
   await expect(
     page.getByText(
-      "Perubahan pekerjaan belum tersimpan tidak termasuk dalam snapshot yang dipilih.",
+      "Perubahan yang belum dipastikan tersimpan di server tidak termasuk dalam snapshot yang dipilih.",
     ),
   ).toBeVisible();
   page.once("dialog", (dialog) => dialog.dismiss());
   await page.getByRole("link", { name: "Beranda" }).click();
-  await expect(page.getByLabel("Komentar atau keraguan").first()).toHaveValue(
-    "Perubahan belum tersimpan",
-  );
+  await expect(page.getByLabel("Komentar atau keraguan")).toHaveValue("Perubahan belum tersimpan");
   page.once("dialog", (dialog) => dialog.dismiss());
   await page.getByRole("button", { name: "Buat snapshot revisi server" }).click();
   await expect(page.getByRole("checkbox")).toHaveCount(0);
-  await page.getByLabel("Komentar atau keraguan").first().fill("Saya ragu tetapi tetap disimpan");
+  await page.getByLabel("Komentar atau keraguan").fill("Saya ragu tetapi tetap disimpan");
+  await page.unroute("**/api/v2/works/*");
+  await expect
+    .poll(
+      async () =>
+        (await page.getByRole("button", { name: "Coba sinkronkan" }).isVisible()) ||
+        (await page.getByText("Tersimpan di server.", { exact: true }).isVisible()),
+    )
+    .toBe(true);
+  if (await page.getByRole("button", { name: "Coba sinkronkan" }).isVisible())
+    await page.getByRole("button", { name: "Coba sinkronkan" }).click();
+  await expect(page.getByText("Tersimpan di server.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Buat snapshot revisi server" }).click();
-  await expect(page.getByRole("status")).toContainText("Snapshot revisi 2 dibuat");
+  await expect(page.getByText(/Snapshot revisi .* dibuat/)).toBeVisible();
   await page.getByRole("checkbox").last().check();
   await page.getByRole("button", { name: "Muat konteks" }).click();
   await expect(page.getByText("Belum dinilai", { exact: true })).toBeVisible();
@@ -905,7 +962,7 @@ test("v2 manual teacher loop saves, exports and imports feedback", async ({ page
   const target = {
     snapshotId: exported.snapshots[0].id,
     workId: exported.snapshots[0].work.id,
-    revision: 2,
+    revision: exported.snapshots[0].work.revision,
   };
   const feedback = JSON.parse(readFileSync("examples/teacher-feedback.v2.json", "utf8"));
   feedback.target = target;
@@ -913,7 +970,7 @@ test("v2 manual teacher loop saves, exports and imports feedback", async ({ page
   await page.getByLabel("Atau tempel JSON").fill(JSON.stringify(feedback));
   await page.getByRole("button", { name: "Pratinjau", exact: true }).click();
   await page.getByRole("button", { name: "Konfirmasi impor" }).click();
-  await expect(page.getByRole("status")).toHaveText("Impor berhasil.");
+  await expect(page.getByText("Impor berhasil.", { exact: true })).toBeVisible();
   const annotation = JSON.parse(
     readFileSync("examples/teacher-feedback.annotation.v2.json", "utf8"),
   );
@@ -921,7 +978,7 @@ test("v2 manual teacher loop saves, exports and imports feedback", async ({ page
   await page.getByLabel("Atau tempel JSON").fill(JSON.stringify(annotation));
   await page.getByRole("button", { name: "Pratinjau", exact: true }).click();
   await page.getByRole("button", { name: "Konfirmasi impor" }).click();
-  await expect(page.getByRole("status")).toHaveText("Impor berhasil.");
+  await expect(page.getByText("Impor berhasil.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Muat konteks" }).click();
   await expect(page.getByText("Penilaian guru", { exact: false })).toBeVisible();
   await expect(page.getByText("Hasil guru: benar", { exact: true })).toBeVisible();
@@ -956,4 +1013,914 @@ test("v2 manual teacher loop saves, exports and imports feedback", async ({ page
   await page.goto(`${origin}/manual`);
   await expect(page.getByText("Paket manual browser", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Penilaian guru", { exact: false })).toHaveCount(0);
+});
+
+test("device draft store isolates owners and rejects stale or revoked writes", async ({ page }) => {
+  await page.goto(`${origin}/test-draft-store`);
+  await page.waitForFunction(() => "testDraftStore" in window);
+  const result = await page.evaluate(async () => {
+    const store = (
+      window as unknown as {
+        testDraftStore: typeof import("../../src/features/practice/draft-store");
+      }
+    ).testDraftStore;
+    const editable = {
+      answers: {},
+      reflection: { understood: [], unclear: [], nextStep: "" },
+      currentExerciseId: null,
+    };
+    const draft = {
+      uid: "draft-a",
+      workId: "11111111-1111-4111-8111-111111111111",
+      packId: "pack-a",
+      branchId: "22222222-2222-4222-8222-222222222222",
+      epoch: 0,
+      version: 0,
+      baseRevision: 0,
+      base: editable,
+      editable,
+      pending: null,
+    };
+    const initial = await store.writeDeviceDraft(draft, null);
+    const saved = await store.writeDeviceDraft({ ...draft, version: 1 }, 0);
+    const stale = await store.writeDeviceDraft({ ...draft, version: 1 }, 0);
+    const other = await store.readDeviceDrafts("draft-b", draft.workId);
+    const before = await store.readDeviceDrafts("draft-a", draft.workId);
+    await store.clearDeviceDrafts("draft-a");
+    const revoked = await store.writeDeviceDraft({ ...draft, version: 2 }, 1);
+    const after = await store.readDeviceDrafts("draft-a", draft.workId);
+    return { initial, saved, stale, other, before, revoked, after };
+  });
+  expect(result.initial).toBe("saved");
+  expect(result.saved).toBe("saved");
+  expect(result.stale).toBe("conflict");
+  expect(result.other.drafts).toEqual([]);
+  expect(result.before.drafts).toHaveLength(1);
+  expect(result.revoked).toBe("revoked");
+  expect(result.after.drafts).toEqual([]);
+  expect(result.after.epoch).toBe(1);
+});
+
+test("commuter draft retains newer input while a save is in flight", async ({ page }) => {
+  await page.goto(`${origin}/test-draft-store`);
+  await page.waitForFunction(() => "TestCommuterDraft" in window);
+  const work = JSON.parse(readFileSync("examples/learning-work.v2.json", "utf8"));
+  const pack = JSON.parse(readFileSync("examples/learning-pack.v2.json", "utf8"));
+  work.revision = 0;
+  const result = await page.evaluate(
+    async ({ initial, packData }) => {
+      const Controller = (
+        window as unknown as {
+          TestCommuterDraft: typeof import("../../src/features/practice/commuter-draft").CommuterDraft;
+        }
+      ).TestCommuterDraft;
+      const store = (
+        window as unknown as {
+          testDraftStore: typeof import("../../src/features/practice/draft-store");
+        }
+      ).testDraftStore;
+      await store.clearDeviceDrafts("controller-test");
+      const user = {
+        uid: "controller-test",
+        getIdToken: async () => "demo-token",
+      } as import("firebase/auth").User;
+      let server = structuredClone(initial);
+      let release!: () => void;
+      let saw!: () => void;
+      const hold = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const seen = new Promise<void>((resolve) => {
+        saw = resolve;
+      });
+      let count = 0;
+      const originalFetch = window.fetch;
+      window.fetch = async (_input, init) => {
+        if (init?.method === "PATCH") {
+          count++;
+          const body = JSON.parse(String(init.body));
+          if (count === 1) {
+            saw();
+            await hold;
+          }
+          server = {
+            ...server,
+            revision: server.revision + 1,
+            answers: body.answers,
+            reflection: body.reflection,
+            currentExerciseId: body.currentExerciseId,
+          };
+          return Response.json(server);
+        }
+        return Response.json({ work: server });
+      };
+      let view: import("../../src/features/practice/commuter-draft").DraftView | undefined;
+      const controller = new Controller(user, initial, packData, (next) => {
+        view = next;
+      });
+      await controller.open();
+      const first = {
+        ...view!.editable,
+        reflection: { ...view!.editable.reflection, nextStep: "first" },
+      };
+      controller.update(first);
+      await seen;
+      controller.update({ ...first, reflection: { ...first.reflection, nextStep: "second" } });
+      release();
+      const deadline = Date.now() + 5000;
+      while ((count < 2 || view?.status !== "server") && Date.now() < deadline)
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      const result = {
+        count,
+        text: view?.editable.reflection.nextStep,
+        status: view?.status,
+        serverText: server.reflection.nextStep,
+      };
+      controller.close();
+      window.fetch = originalFetch;
+      return result;
+    },
+    { initial: work, packData: pack },
+  );
+  expect(result).toEqual({ count: 2, text: "second", status: "server", serverText: "second" });
+});
+
+test("N3 commuter draft survives offline editing and reload", async ({ page, context }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page, "A");
+  await page.goto(`${origin}/manual`);
+  const pack = JSON.parse(readFileSync("examples/learning-pack.v2.json", "utf8"));
+  pack.id = "n3-offline-pack";
+  pack.title = "Latihan komuter N3";
+  await page.getByLabel("Atau tempel JSON").fill(JSON.stringify(pack));
+  await page.getByRole("button", { name: "Pratinjau", exact: true }).click();
+  await page.getByRole("button", { name: "Konfirmasi impor" }).click();
+  await expect(page.getByText("Impor berhasil.", { exact: true })).toBeVisible();
+  await page
+    .getByText(pack.title, { exact: true })
+    .locator("..")
+    .getByRole("button", { name: "Mulai pekerjaan" })
+    .click();
+  await expect(page.getByRole("heading", { name: pack.title })).toBeVisible();
+  await expect(page.getByText("Tersimpan di server", { exact: true })).toBeVisible();
+  await expect(page.locator("ruby rt")).toHaveCount(0);
+  await page.getByRole("button", { name: "Tampilkan furigana" }).click();
+  await expect(page.locator("ruby rt").first()).toBeVisible();
+  await page.getByRole("button", { name: "Sembunyikan furigana" }).click();
+  await expect(page.locator("ruby rt")).toHaveCount(0);
+  await context.setOffline(true);
+  await page.getByRole("button", { name: "Mulai latihan" }).click();
+  await expect(page.getByText("Soal 1 dari 5")).toBeVisible();
+  await page.locator('input[type="radio"]').first().check();
+  await expect(page.getByLabel("Komentar atau keraguan")).toHaveAttribute("maxlength", "2000");
+  await page.getByLabel("Komentar atau keraguan").fill("Disimpan saat offline");
+  await page.getByRole("button", { name: "Refleksi", exact: true }).click();
+  await expect(page.getByLabel("Dipahami 1")).toHaveAttribute("maxlength", "500");
+  await page.getByLabel("Dipahami 1").fill("Bentuk pertentangan");
+  await expect(page.getByText(/Draf tersimpan di HP/)).toBeVisible();
+  await page.route("**/api/v2/works/*", async (route) => {
+    if (route.request().method() === "PATCH") await route.abort();
+    else await route.continue();
+  });
+  await context.setOffline(false);
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.reload();
+  await page
+    .getByText(new RegExp(`${pack.id} · revisi`))
+    .locator("..")
+    .getByRole("button", { name: "Buka", exact: true })
+    .click();
+  await expect(page.getByText("Soal 1 dari 5")).toBeVisible();
+  await expect(page.getByLabel("Komentar atau keraguan")).toHaveValue("Disimpan saat offline");
+  await page.getByRole("button", { name: "Refleksi", exact: true }).click();
+  await expect(page.getByLabel("Dipahami 1")).toHaveValue("Bentuk pertentangan");
+  await expect(page.getByText(/Draf tersimpan di HP/)).toBeVisible();
+  await page.unroute("**/api/v2/works/*");
+  await page.getByRole("button", { name: "Coba sinkronkan" }).click();
+  await expect(page.getByText("Tersimpan di server.", { exact: true })).toBeVisible();
+  pack.id = "n3-hidden-pack";
+  pack.title = "Latihan tanpa furigana";
+  pack.furigana = "hidden";
+  await page.getByLabel("Atau tempel JSON").fill(JSON.stringify(pack));
+  await page.getByRole("button", { name: "Pratinjau", exact: true }).click();
+  await page.getByRole("button", { name: "Konfirmasi impor" }).click();
+  await page
+    .getByText(pack.title, { exact: true })
+    .locator("..")
+    .getByRole("button", { name: "Mulai pekerjaan" })
+    .click();
+  await expect(page.getByRole("heading", { name: pack.title })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Tampilkan furigana" })).toHaveCount(0);
+  await expect(page.locator("ruby rt")).toHaveCount(0);
+  await page.getByRole("button", { name: "Mulai latihan" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Soal 1 dari 5")).toBeVisible();
+  await page.getByRole("button", { name: "Berikutnya" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Soal 2 dari 5")).toBeVisible();
+  await expect(page.getByLabel("Jawaban", { exact: true })).toHaveAttribute("maxlength", "2000");
+});
+
+test("commuter draft retries the same operation after a lost response and reload", async ({
+  page,
+}) => {
+  await page.goto(`${origin}/test-draft-store`);
+  await page.waitForFunction(() => "TestCommuterDraft" in window);
+  const work = JSON.parse(readFileSync("examples/learning-work.v2.json", "utf8"));
+  const pack = JSON.parse(readFileSync("examples/learning-pack.v2.json", "utf8"));
+  work.revision = 0;
+  const result = await page.evaluate(
+    async ({ initial, packData }) => {
+      const Controller = (
+        window as unknown as {
+          TestCommuterDraft: typeof import("../../src/features/practice/commuter-draft").CommuterDraft;
+        }
+      ).TestCommuterDraft;
+      const store = (
+        window as unknown as {
+          testDraftStore: typeof import("../../src/features/practice/draft-store");
+        }
+      ).testDraftStore;
+      await store.clearDeviceDrafts("lost-test");
+      const user = {
+        uid: "lost-test",
+        getIdToken: async () => "demo-token",
+      } as import("firebase/auth").User;
+      let server = structuredClone(initial);
+      const ids: string[] = [];
+      let accepted: typeof server | undefined;
+      const originalFetch = window.fetch;
+      window.fetch = async (_input, init) => {
+        if (init?.method === "PATCH") {
+          const body = JSON.parse(String(init.body));
+          ids.push(body.operationId);
+          if (!accepted) {
+            server = {
+              ...server,
+              revision: 1,
+              answers: body.answers,
+              reflection: body.reflection,
+              currentExerciseId: body.currentExerciseId,
+            };
+            accepted = structuredClone(server);
+            throw new TypeError("response lost");
+          }
+          return Response.json(accepted);
+        }
+        return Response.json({ work: server });
+      };
+      let view: import("../../src/features/practice/commuter-draft").DraftView | undefined;
+      const first = new Controller(user, initial, packData, (next) => {
+        view = next;
+      });
+      await first.open();
+      first.update({
+        ...view!.editable,
+        reflection: { ...view!.editable.reflection, nextStep: "retry me" },
+      });
+      let deadline = Date.now() + 5000;
+      while ((!view?.pending || view.status !== "local") && Date.now() < deadline)
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      first.close();
+      const second = new Controller(user, server, packData, (next) => {
+        view = next;
+      });
+      await second.open();
+      deadline = Date.now() + 5000;
+      while ((ids.length < 2 || view?.status !== "server") && Date.now() < deadline)
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      const result = {
+        ids,
+        status: view?.status,
+        text: view?.editable.reflection.nextStep,
+        revision: server.revision,
+      };
+      second.close();
+      window.fetch = originalFetch;
+      return result;
+    },
+    { initial: work, packData: pack },
+  );
+  expect(result.ids).toHaveLength(2);
+  expect(result.ids[0]).toBe(result.ids[1]);
+  expect(result.status).toBe("server");
+  expect(result.text).toBe("retry me");
+  expect(result.revision).toBe(1);
+});
+
+test("commuter draft preserves competing local branches", async ({ page }) => {
+  await page.goto(`${origin}/test-draft-store`);
+  await page.waitForFunction(() => "TestCommuterDraft" in window);
+  const work = JSON.parse(readFileSync("examples/learning-work.v2.json", "utf8"));
+  const pack = JSON.parse(readFileSync("examples/learning-pack.v2.json", "utf8"));
+  const result = await page.evaluate(
+    async ({ initial, packData }) => {
+      const Controller = (
+        window as unknown as {
+          TestCommuterDraft: typeof import("../../src/features/practice/commuter-draft").CommuterDraft;
+        }
+      ).TestCommuterDraft;
+      const store = (
+        window as unknown as {
+          testDraftStore: typeof import("../../src/features/practice/draft-store");
+        }
+      ).testDraftStore;
+      await store.clearDeviceDrafts("branch-test");
+      const user = {
+        uid: "branch-test",
+        getIdToken: async () => "demo-token",
+      } as import("firebase/auth").User;
+      const originalFetch = window.fetch;
+      window.fetch = async () => {
+        throw new TypeError("offline");
+      };
+      let firstView: import("../../src/features/practice/commuter-draft").DraftView | undefined;
+      let secondView: import("../../src/features/practice/commuter-draft").DraftView | undefined;
+      const first = new Controller(user, initial, packData, (view) => {
+        firstView = view;
+      });
+      const second = new Controller(user, initial, packData, (view) => {
+        secondView = view;
+      });
+      await first.open();
+      await second.open();
+      first.update({
+        ...firstView!.editable,
+        reflection: { ...firstView!.editable.reflection, nextStep: "tab one" },
+      });
+      let deadline = Date.now() + 5000;
+      while (firstView?.status !== "local" && Date.now() < deadline)
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      second.update({
+        ...secondView!.editable,
+        reflection: { ...secondView!.editable.reflection, nextStep: "tab two" },
+      });
+      deadline = Date.now() + 5000;
+      while (secondView?.status !== "conflict" && Date.now() < deadline)
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      const drafts = await store.readDeviceDrafts(user.uid, initial.id);
+      const result = {
+        status: secondView?.status,
+        values: drafts.drafts.map((draft) => draft.editable.reflection.nextStep).sort(),
+      };
+      first.close();
+      second.close();
+      window.fetch = originalFetch;
+      return result;
+    },
+    { initial: work, packData: pack },
+  );
+  expect(result).toEqual({ status: "conflict", values: ["tab one", "tab two"] });
+});
+
+test("N3 offers server rescue and copy when IndexedDB fails", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin });
+  await signIn(page, "A");
+  await page.addInitScript(() => {
+    const original = indexedDB.open.bind(indexedDB);
+    indexedDB.open = ((name: string, version?: number) => {
+      if (name === "japanese-learning-drafts-v2")
+        throw new DOMException("Unavailable", "SecurityError");
+      return original(name, version);
+    }) as typeof indexedDB.open;
+  });
+  await page.goto(`${origin}/manual`);
+  const pack = JSON.parse(readFileSync("examples/learning-pack.v2.json", "utf8"));
+  pack.id = "n3-storage-failure";
+  pack.title = "Penyelamatan draf";
+  await page.getByLabel("Atau tempel JSON").fill(JSON.stringify(pack));
+  await page.getByRole("button", { name: "Pratinjau", exact: true }).click();
+  await page.getByRole("button", { name: "Konfirmasi impor" }).click();
+  await page
+    .getByText(pack.title, { exact: true })
+    .locator("..")
+    .getByRole("button", { name: "Mulai pekerjaan" })
+    .click();
+  await expect(page.getByText(/Pemulihan lokal tidak tersedia/).first()).toBeVisible();
+  await page.getByRole("button", { name: "Mulai latihan" }).click();
+  await page.getByLabel("Komentar atau keraguan").fill("Penyelamatan server");
+  await page.getByRole("button", { name: "Salin input" }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
+    "Penyelamatan server",
+  );
+  await page.getByRole("button", { name: "Simpan ke server" }).click();
+  await expect(
+    page.getByText("Tersimpan di server. Pemulihan lokal tetap tidak tersedia."),
+  ).toBeVisible();
+  await page.reload();
+  await page
+    .getByText(new RegExp(`${pack.id} · revisi`))
+    .locator("..")
+    .getByRole("button", { name: "Buka", exact: true })
+    .click();
+  await expect(page.getByLabel("Komentar atau keraguan")).toHaveValue("Penyelamatan server");
+});
+
+test("submitted work recovers its local draft into one new work after a lost response", async ({
+  page,
+}) => {
+  await page.goto(`${origin}/test-draft-store`);
+  await page.waitForFunction(() => "TestCommuterDraft" in window);
+  const work = JSON.parse(readFileSync("examples/learning-work.v2.json", "utf8"));
+  const pack = JSON.parse(readFileSync("examples/learning-pack.v2.json", "utf8"));
+  work.status = "submitted";
+  const result = await page.evaluate(
+    async ({ submitted, packData }) => {
+      const Controller = (
+        window as unknown as {
+          TestCommuterDraft: typeof import("../../src/features/practice/commuter-draft").CommuterDraft;
+        }
+      ).TestCommuterDraft;
+      const store = (
+        window as unknown as {
+          testDraftStore: typeof import("../../src/features/practice/draft-store");
+        }
+      ).testDraftStore;
+      const uid = "submitted-test";
+      await store.activateDeviceAccount(uid);
+      await store.clearDeviceDrafts(uid);
+      const { epoch } = await store.readDeviceDrafts(uid, submitted.id);
+      const base = {
+        answers: submitted.answers,
+        reflection: submitted.reflection,
+        currentExerciseId: submitted.currentExerciseId,
+      };
+      const editable = {
+        ...base,
+        reflection: { ...base.reflection, nextStep: "draft from old work" },
+      };
+      await store.writeDeviceDraft(
+        {
+          uid,
+          workId: submitted.id,
+          packId: submitted.packId,
+          branchId: crypto.randomUUID(),
+          version: 0,
+          epoch,
+          baseRevision: submitted.revision - 1,
+          base,
+          editable,
+          pending: null,
+        },
+        null,
+      );
+      const user = { uid, getIdToken: async () => "demo-token" } as import("firebase/auth").User;
+      const originalFetch = window.fetch;
+      let newWork: typeof submitted | undefined;
+      const workIds: string[] = [];
+      const operationIds: string[] = [];
+      window.fetch = async (input, init) => {
+        const body = JSON.parse(String(init?.body));
+        if (String(input).endsWith("/api/v2/works")) {
+          workIds.push(body.workId);
+          newWork ??= {
+            ...submitted,
+            id: body.workId,
+            revision: 0,
+            status: "in_progress",
+            answers: {},
+            reflection: { understood: [], unclear: [], nextStep: "" },
+            currentExerciseId: null,
+          };
+          return Response.json(newWork);
+        }
+        operationIds.push(body.operationId);
+        if (operationIds.length === 1) {
+          newWork = {
+            ...newWork!,
+            revision: 1,
+            answers: body.answers,
+            reflection: body.reflection,
+            currentExerciseId: body.currentExerciseId,
+          };
+          throw new TypeError("response lost");
+        }
+        return Response.json(newWork);
+      };
+      let view: import("../../src/features/practice/commuter-draft").DraftView | undefined;
+      const first = new Controller(user, submitted, packData, (next) => {
+        view = next;
+      });
+      await first.open();
+      await first.createReplacement();
+      const afterLost = (await store.readDeviceDrafts(uid, submitted.id)).drafts.length;
+      first.close();
+      const resumed = new Controller(user, submitted, packData, (next) => {
+        view = next;
+      });
+      await resumed.open();
+      await resumed.createReplacement();
+      const afterSuccess = (await store.readDeviceDrafts(uid, submitted.id)).drafts.length;
+      const result = {
+        workIds,
+        operationIds,
+        afterLost,
+        afterSuccess,
+        resultId: view?.work.id,
+        text: view?.editable.reflection.nextStep,
+      };
+      resumed.close();
+      window.fetch = originalFetch;
+      return result;
+    },
+    { submitted: work, packData: pack },
+  );
+  expect(result.workIds).toHaveLength(2);
+  expect(result.workIds[0]).toBe(result.workIds[1]);
+  expect(result.operationIds[0]).toBe(result.operationIds[1]);
+  expect(result.afterLost).toBe(1);
+  expect(result.afterSuccess).toBe(0);
+  expect(result.resultId).toBe(result.workIds[0]);
+  expect(result.text).toBe("draft from old work");
+});
+
+test("N3 external account switch isolates and clears old drafts without a dialog", async ({
+  page,
+}) => {
+  await signIn(page, "A");
+  await page.goto(`${origin}/manual`);
+  const pack = JSON.parse(readFileSync("examples/learning-pack.v2.json", "utf8"));
+  pack.id = "n3-account-switch";
+  pack.title = "Draf akun pertama";
+  await page.getByLabel("Atau tempel JSON").fill(JSON.stringify(pack));
+  await page.getByRole("button", { name: "Pratinjau", exact: true }).click();
+  await page.getByRole("button", { name: "Konfirmasi impor" }).click();
+  await page
+    .getByText(pack.title, { exact: true })
+    .locator("..")
+    .getByRole("button", { name: "Mulai pekerjaan" })
+    .click();
+  await page.getByRole("button", { name: "Mulai latihan" }).click();
+  await page.route("**/api/v2/works/*", async (route) => {
+    if (route.request().method() === "PATCH") await route.abort();
+    else await route.continue();
+  });
+  await page.getByLabel("Komentar atau keraguan").fill("rahasia akun pertama");
+  await expect(page.getByText(/Draf tersimpan di HP/)).toBeVisible();
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page.getByLabel("Komentar atau keraguan")).toHaveValue("rahasia akun pertama");
+  let dialogs = 0;
+  page.on("dialog", async (dialog) => {
+    dialogs++;
+    await dialog.dismiss();
+  });
+  await page.evaluate(async () => {
+    await (window as unknown as { testSwitchAccount: () => Promise<unknown> }).testSwitchAccount();
+  });
+  await expect(page.getByText("Draf akun pertama", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("rahasia akun pertama")).toHaveCount(0);
+  await expect(page.getByText(/akun sebelumnya telah dibersihkan/i)).toBeVisible();
+  const oldRecords = await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("japanese-learning-drafts-v2", 1);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    return await new Promise<number>((resolve, reject) => {
+      const tx = database.transaction("drafts", "readonly");
+      const result = tx.objectStore("drafts").getAll();
+      tx.oncomplete = () => {
+        database.close();
+        resolve(
+          (result.result as { uid: string }[]).filter((draft) => draft.uid === "m4-browser-a")
+            .length,
+        );
+      };
+      tx.onerror = () => reject(tx.error);
+    });
+  });
+  expect(oldRecords).toBe(0);
+  expect(dialogs).toBe(0);
+});
+
+test("device account markers do not clear another tab's account", async ({ page, context }) => {
+  await page.goto(`${origin}/test-draft-store`);
+  await page.waitForFunction(() => "testDraftStore" in window);
+  const makeDraft = async (target: Page, uid: string, suffix: string) =>
+    target.evaluate(
+      async ({ uid, suffix }) => {
+        const store = (
+          window as unknown as {
+            testDraftStore: typeof import("../../src/features/practice/draft-store");
+          }
+        ).testDraftStore;
+        await store.activateDeviceAccount(uid);
+        const workId = `11111111-1111-4111-8111-11111111111${suffix}`;
+        const editable = {
+          answers: {},
+          reflection: { understood: [], unclear: [], nextStep: uid },
+          currentExerciseId: null,
+        };
+        const { epoch } = await store.readDeviceDrafts(uid, workId);
+        await store.writeDeviceDraft(
+          {
+            uid,
+            workId,
+            packId: "pack-a",
+            branchId: crypto.randomUUID(),
+            version: 0,
+            epoch,
+            baseRevision: 0,
+            base: editable,
+            editable,
+            pending: null,
+          },
+          null,
+        );
+        return workId;
+      },
+      { uid, suffix },
+    );
+  const workId = await makeDraft(page, "tab-account-a", "1");
+  const second = await context.newPage();
+  await second.goto(`${origin}/test-draft-store`);
+  await second.waitForFunction(() => "testDraftStore" in window);
+  await makeDraft(second, "tab-account-b", "2");
+  const retained = await page.evaluate(async (id) => {
+    const store = (
+      window as unknown as {
+        testDraftStore: typeof import("../../src/features/practice/draft-store");
+      }
+    ).testDraftStore;
+    return (await store.readDeviceDrafts("tab-account-a", id)).drafts.length;
+  }, workId);
+  expect(retained).toBe(1);
+  await second.close();
+});
+
+test("N3 keeps both local drafts when two tabs edit the same work", async ({ page, context }) => {
+  await signIn(page, "A");
+  await page.goto(`${origin}/manual`);
+  const pack = JSON.parse(readFileSync("examples/learning-pack.v2.json", "utf8"));
+  pack.id = "n3-two-tabs";
+  pack.title = "Latihan dua tab";
+  await page.getByLabel("Atau tempel JSON").fill(JSON.stringify(pack));
+  await page.getByRole("button", { name: "Pratinjau", exact: true }).click();
+  await page.getByRole("button", { name: "Konfirmasi impor" }).click();
+  await page
+    .getByText(pack.title, { exact: true })
+    .locator("..")
+    .getByRole("button", { name: "Mulai pekerjaan" })
+    .click();
+  await expect(page.getByText("Tersimpan di server", { exact: true })).toBeVisible();
+  await page.route("**/api/v2/works/*", async (route) => {
+    if (route.request().method() === "PATCH") await route.abort();
+    else await route.continue();
+  });
+  await page.getByRole("button", { name: "Mulai latihan" }).click();
+  await expect(page.getByText(/Draf tersimpan di HP/)).toBeVisible();
+  const [second] = await Promise.all([
+    context.waitForEvent("page"),
+    page.evaluate(() => {
+      window.open("/manual", "_blank");
+    }),
+  ]);
+  await second.waitForLoadState("domcontentloaded");
+  await second.route("**/api/v2/works/*", async (route) => {
+    if (route.request().method() === "PATCH") await route.abort();
+    else await route.continue();
+  });
+  await second
+    .getByText(/n3-two-tabs · revisi/)
+    .locator("..")
+    .getByRole("button", { name: "Buka" })
+    .click();
+  await expect(second.getByLabel("Komentar atau keraguan")).toBeVisible();
+  if (!(await page.getByText("Soal 1 dari 5").isVisible())) {
+    await page
+      .getByText(/n3-two-tabs · revisi/)
+      .locator("..")
+      .getByRole("button", { name: "Buka" })
+      .click();
+  }
+  await expect(page.getByText("Soal 1 dari 5")).toBeVisible();
+  await page.getByLabel("Komentar atau keraguan").fill("tab satu");
+  await expect(page.getByText(/Draf tersimpan di HP/)).toBeVisible();
+  await second.getByLabel("Komentar atau keraguan").fill("tab dua");
+  await expect(second.getByText(/Kedua salinan dipertahankan/)).toBeVisible();
+  await expect(second.locator("details")).toHaveCount(2);
+  await second.locator("details summary").nth(0).click();
+  await second.locator("details summary").nth(1).click();
+  await expect(second.locator("details pre").filter({ hasText: "tab satu" })).toBeVisible();
+  await expect(second.locator("details pre").filter({ hasText: "tab dua" })).toBeVisible();
+  const comments = await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("japanese-learning-drafts-v2", 1);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    return await new Promise<string[]>((resolve, reject) => {
+      const tx = db.transaction("drafts", "readonly");
+      const request = tx.objectStore("drafts").getAll();
+      tx.oncomplete = () => {
+        db.close();
+        resolve(
+          (
+            request.result as {
+              uid: string;
+              packId: string;
+              editable: { answers: Record<string, { comment: string }> };
+            }[]
+          )
+            .filter((draft) => draft.uid === "m4-browser-a" && draft.packId === "n3-two-tabs")
+            .map((draft) => draft.editable.answers["contrast-choice"]?.comment)
+            .filter(Boolean)
+            .sort(),
+        );
+      };
+      tx.onerror = () => reject(tx.error);
+    });
+  });
+  expect(comments).toEqual(["tab dua", "tab satu"]);
+  await second.close();
+});
+
+test("N3 submit waits for a saved revision and remains locked after reload", async ({ page }) => {
+  await signIn(page, "A");
+  await page.goto(`${origin}/manual`);
+  const pack = JSON.parse(readFileSync("examples/learning-pack.v2.json", "utf8"));
+  pack.id = "n3-submit";
+  pack.title = "Akhiri pekerjaan N3";
+  await page.getByLabel("Atau tempel JSON").fill(JSON.stringify(pack));
+  await page.getByRole("button", { name: "Pratinjau", exact: true }).click();
+  await page.getByRole("button", { name: "Konfirmasi impor" }).click();
+  await page
+    .getByText(pack.title, { exact: true })
+    .locator("..")
+    .getByRole("button", { name: "Mulai pekerjaan" })
+    .click();
+  await expect(page.getByText("Tersimpan di server", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Mulai latihan" }).click();
+  await page.getByLabel("Komentar atau keraguan").fill("Jawaban belum selesai");
+  await expect(page.getByText("Tersimpan di server.", { exact: true })).toBeVisible();
+  let releaseSubmit!: () => void;
+  let sawSubmit!: () => void;
+  const holdSubmit = new Promise<void>((resolve) => {
+    releaseSubmit = resolve;
+  });
+  const seenSubmit = new Promise<void>((resolve) => {
+    sawSubmit = resolve;
+  });
+  await page.route("**/api/v2/works/*/submit", async (route) => {
+    const response = await route.fetch();
+    sawSubmit();
+    await holdSubmit;
+    await route.fulfill({ response });
+  });
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Akhiri pekerjaan" }).click();
+  await seenSubmit;
+  await expect(page.getByLabel("Komentar atau keraguan")).toBeDisabled();
+  releaseSubmit();
+  await expect(page.getByText("Pekerjaan telah diakhiri.", { exact: true })).toBeVisible();
+  await page.unroute("**/api/v2/works/*/submit");
+  await expect(page.getByLabel("Komentar atau keraguan")).toBeDisabled();
+  await page.reload();
+  await page
+    .getByText(/n3-submit · revisi/)
+    .locator("..")
+    .getByRole("button", { name: "Buka" })
+    .click();
+  await expect(page.getByLabel("Komentar atau keraguan")).toHaveValue("Jawaban belum selesai");
+  await expect(page.getByLabel("Komentar atau keraguan")).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Akhiri pekerjaan" })).toHaveCount(0);
+});
+
+test("in-flight acknowledgement does not clear a local branch conflict", async ({ page }) => {
+  await page.goto(`${origin}/test-draft-store`);
+  await page.waitForFunction(() => "TestCommuterDraft" in window);
+  const work = JSON.parse(readFileSync("examples/learning-work.v2.json", "utf8"));
+  const pack = JSON.parse(readFileSync("examples/learning-pack.v2.json", "utf8"));
+  const result = await page.evaluate(
+    async ({ initial, packData }) => {
+      const Controller = (
+        window as unknown as {
+          TestCommuterDraft: typeof import("../../src/features/practice/commuter-draft").CommuterDraft;
+        }
+      ).TestCommuterDraft;
+      const store = (
+        window as unknown as {
+          testDraftStore: typeof import("../../src/features/practice/draft-store");
+        }
+      ).testDraftStore;
+      const uid = "inflight-branch";
+      await store.clearDeviceDrafts(uid);
+      const user = { uid, getIdToken: async () => "demo-token" } as import("firebase/auth").User;
+      let server = structuredClone(initial);
+      let release!: () => void;
+      let saw!: () => void;
+      const hold = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const seen = new Promise<void>((resolve) => {
+        saw = resolve;
+      });
+      const originalFetch = window.fetch;
+      window.fetch = async (_input, init) => {
+        if (init?.method === "PATCH") {
+          const body = JSON.parse(String(init.body));
+          saw();
+          await hold;
+          server = {
+            ...server,
+            revision: server.revision + 1,
+            answers: body.answers,
+            reflection: body.reflection,
+            currentExerciseId: body.currentExerciseId,
+          };
+          return Response.json(server);
+        }
+        return Response.json({ work: server });
+      };
+      let firstView: import("../../src/features/practice/commuter-draft").DraftView | undefined;
+      let secondView: import("../../src/features/practice/commuter-draft").DraftView | undefined;
+      const first = new Controller(user, initial, packData, (view) => {
+        firstView = view;
+      });
+      await first.open();
+      first.update({
+        ...firstView!.editable,
+        reflection: { ...firstView!.editable.reflection, nextStep: "sent" },
+      });
+      await seen;
+      const second = new Controller(user, initial, packData, (view) => {
+        secondView = view;
+      });
+      await second.open();
+      second.update({
+        ...secondView!.editable,
+        reflection: { ...secondView!.editable.reflection, nextStep: "other tab" },
+      });
+      let deadline = Date.now() + 5000;
+      while (secondView?.status !== "local" && Date.now() < deadline)
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      first.update({
+        ...firstView!.editable,
+        reflection: { ...firstView!.editable.reflection, nextStep: "newer input" },
+      });
+      deadline = Date.now() + 5000;
+      while (firstView?.status !== "conflict" && Date.now() < deadline)
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      release();
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const drafts = await store.readDeviceDrafts(uid, initial.id);
+      const result = {
+        status: firstView?.status,
+        values: drafts.drafts.map((draft) => draft.editable.reflection.nextStep).sort(),
+      };
+      first.close();
+      second.close();
+      window.fetch = originalFetch;
+      return result;
+    },
+    { initial: work, packData: pack },
+  );
+  expect(result).toEqual({ status: "conflict", values: ["newer input", "other tab"] });
+});
+
+test("device account transitions finish cleanup before a new session opens", async ({ page }) => {
+  await page.goto(`${origin}/test-draft-store`);
+  await page.waitForFunction(() => "testDraftStore" in window);
+  const result = await page.evaluate(async () => {
+    const store = (
+      window as unknown as {
+        testDraftStore: typeof import("../../src/features/practice/draft-store");
+      }
+    ).testDraftStore;
+    const uid = "transition-a";
+    const workId = "11111111-1111-4111-8111-111111111111";
+    await store.activateDeviceAccount(uid);
+    const { epoch } = await store.readDeviceDrafts(uid, workId);
+    const editable = {
+      answers: {},
+      reflection: { understood: [], unclear: [], nextStep: "private" },
+      currentExerciseId: null,
+    };
+    await store.writeDeviceDraft(
+      {
+        uid,
+        workId,
+        packId: "pack-a",
+        branchId: crypto.randomUUID(),
+        version: 0,
+        epoch,
+        baseRevision: 0,
+        base: editable,
+        editable,
+        pending: null,
+      },
+      null,
+    );
+    const first = store.activateDeviceAccount("transition-b");
+    const second = store.activateDeviceAccount(uid);
+    await Promise.all([first, second]);
+    const after = await store.readDeviceDrafts(uid, workId);
+    return {
+      drafts: after.drafts.length,
+      epoch: after.epoch,
+      marker: sessionStorage.getItem("learning-draft-account"),
+    };
+  });
+  expect(result).toEqual({ drafts: 0, epoch: 1, marker: "transition-a" });
 });

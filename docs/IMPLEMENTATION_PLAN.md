@@ -12,7 +12,7 @@ Indonesia; catatan historis di bagian arsip dipertahankan dalam bentuk aslinya.
 | N0 Penyelarasan panduan | Selesai | Enam panduan selaras, target dibedakan dari runtime v1 |
 | N1 Fondasi data v2 | Selesai | Skema, tipe, contoh dan tes ringan; tanpa perubahan runtime |
 | N2 Alur guru manual | Selesai secara lokal | Impor paket → pekerjaan → snapshot → impor feedback/anotasi |
-| N3 Pengalaman komuter | Belum dimulai | Bahasa Indonesia, satu soal per layar, materi/furigana, nikki, draf HP + server |
+| N3 Pengalaman komuter | Selesai secara lokal | Bahasa Indonesia, satu soal per layar, materi/furigana, nikki, draf HP + server |
 | N4 Progres dan PWA | Belum dimulai | Aktivitas vs hasil guru, target belajar, halaman utama sesi berikutnya, pemasangan online |
 | N5 Verifikasi akhir | Belum dimulai | Suite lengkap dan gate hosted yang terbukti, bukan diasumsikan |
 
@@ -142,6 +142,37 @@ sign-out dan pembersihan. Material tetap online; report tidak memakai cache offl
 **Cek selama pengerjaan:** unit draft/revisi/recovery terfokus.
 **Gate akhir alur:** browser ponsel/keyboard, reload/putus koneksi/gagal simpan/akun
 berubah, unit lengkap, emulator dan build. Batas browser menghapus storage dijelaskan.
+
+### Bukti N3 (2026-11-02)
+
+`/manual` kini menampilkan materi, satu soal per layar, navigasi/posisi, ruby dan
+furigana sesuai paket, serta refleksi parsial. Draf IndexedDB dipisah menurut akun,
+pekerjaan, paket, dan cabang. Penyimpanan lokal mendahului autosinkronisasi; operasi
+tertunda memakai ID/payload yang sama setelah reload. Konflik mempertahankan salinan
+lokal dan membutuhkan pilihan pengguna. Submit parsial tetap terkunci; draf lama pada
+pekerjaan submitted dapat dipindahkan ke pekerjaan baru dengan retry idempoten.
+
+- `npm run lint`, `npm run typecheck`, dan `npm run test:unit`: PASS, 38 tes unit.
+- `npm run test:emulators`: PASS pada project demo, 12 tes integrasi dan 7 rules.
+- `npm run test:e2e:emulators`: PASS, 23 tes. Ulangan terfokus setelah perubahan
+  submit, pilihan cabang, batas input dan pergantian akun cepat juga PASS.
+  Cakupan mencakup IndexedDB,
+  offline/reload, respons hilang/terlambat, dua tab, pemulihan submitted, kegagalan
+  storage dan penyelamatan server/salin, akun eksternal/sign-out, serta viewport
+  ponsel, keyboard, materi, furigana toggle/hidden dan regresi v1/N2.
+- `npm run build`: PASS dalam salinan sementara dengan environment bersih, tanpa
+  `.env` atau konfigurasi npm pribadi. `git diff --check`: PASS.
+- `graphify update .`: PASS, AST-only dengan fallback sequential; graph memiliki
+  3456 node dan 5494 edge. Label semantik tidak diperbarui. Staging serta cap query
+  dan cadangan graph sebelumnya dipertahankan.
+
+IndexedDB dapat gagal atau dihapus; transaksi yang belum selesai belum dijamin
+bertahan. Jika storage gagal, retry darurat lintas reload tidak dijamin. Materi tetap
+memerlukan jaringan. Emulator/browser memakai project demo; metadata lookup memberi
+peringatan jaringan tetapi tes lulus. Hosted auth/index/rules/HTTPS, revocation,
+BFCache restoration, dialog file sistem operasi, dan keyboard perangkat ponsel
+fisik belum diverifikasi. N4 dapat dimulai; kelulusan lokal bukan kesiapan rilis.
+Tidak ada dependency baru, deployment, perubahan cloud, atau data produksi.
 
 ## N4 — Progres dan PWA
 

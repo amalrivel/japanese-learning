@@ -24,10 +24,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let active = true;
     let unsubscribe = () => {};
+    let previousUid: string | null = null;
     getFirebaseAuth()
       .then((auth) => {
         const stop = onAuthStateChanged(auth, (nextUser) => {
           if (active) {
+            const nextUid = nextUser?.uid ?? null;
+            if (typeof window !== "undefined" && previousUid && previousUid !== nextUid)
+              window.dispatchEvent(
+                new CustomEvent("learning:account-change", { detail: { nextUid } }),
+              );
+            previousUid = nextUid;
             setUser(nextUser);
             setLoading(false);
             setError(null);
@@ -72,8 +79,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       async signOutUser() {
         setError(null);
+        if (typeof window !== "undefined") {
+          const event = new CustomEvent("learning:signout", {
+            cancelable: true,
+            detail: { confirmed: false },
+          });
+          if (!window.dispatchEvent(event)) return;
+          const checks: Promise<boolean>[] = [];
+          if (user)
+            window.dispatchEvent(
+              new CustomEvent("learning:signout-preflight", {
+                detail: { uid: user.uid, confirmed: event.detail.confirmed, checks },
+              }),
+            );
+          if ((await Promise.all(checks)).some((allowed) => !allowed)) return;
+        }
         try {
-          await signOut(await getFirebaseAuth());
+          const auth = await getFirebaseAuth();
+          if (typeof window !== "undefined" && auth.currentUser?.uid !== user?.uid) return;
+          await signOut(auth);
         } catch {
           setError("Sign-out failed. Try again.");
         }

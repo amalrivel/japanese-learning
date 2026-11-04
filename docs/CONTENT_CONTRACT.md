@@ -1,6 +1,6 @@
 # Kontrak data belajar — v2 dan kompatibilitas v1
 
-Status (2026-11-01): alur manual v2 tersedia secara lokal melalui `/manual` dan
+Status (2026-11-02): alur manual dan komuter v2 tersedia secara lokal melalui `/manual` dan
 route `/api/v2`; runtime v1 tetap terpisah. Bagian [arsip v1](#arsip-kontrak-v1)
 menjelaskan runtime lama. Tidak ada konversi otomatis, migrasi, atau penghapusan.
 
@@ -152,13 +152,15 @@ Endpoint impor memeriksa kepemilikan, snapshot immutable, ID/hash retry, dan
 menyimpan feedback atomik. Maksimal 40 feedback dapat disimpan untuk satu snapshot;
 penambahan yang membuat konteks melewati 512 KiB ditolak tanpa tulis sebagian.
 
-## Penyimpanan dan keamanan tahap berikutnya
+## Penyimpanan dan keamanan
 
 N2 menyimpan snapshot/feedback immutable dan pekerjaan berevisi di bawah pemilik
-terverifikasi. N3 menyimpan draf perangkat terpisah menurut UID/pekerjaan; tanpa
+terverifikasi. Draf perangkat dipisahkan menurut UID/pekerjaan/cabang; tanpa
 kunci, token, atau report cache. Konflik tidak membuang salinan lokal. Sign-out
-memperingatkan draf belum tersinkron sebelum pembersihan. IndexedDB tidak menjamin
-ketahanan mutlak terhadap browser/device yang menghapus data.
+memperingatkan draf belum tersinkron sebelum pembersihan; pergantian akun eksternal
+langsung mengisolasi dan membersihkan tanpa dialog. Bila IndexedDB gagal, pengguna
+bisa menyimpan ke server atau menyalin input; retry lintas reload tidak dijamin.
+IndexedDB tidak menjamin ketahanan mutlak terhadap browser/device yang menghapus data.
 
 ## Arsip kontrak v1
 

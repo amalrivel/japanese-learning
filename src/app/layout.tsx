@@ -4,6 +4,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/lib/auth/client";
+import { DraftAccountGuard } from "@/features/practice/draft-account-guard";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -43,7 +44,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <DraftAccountGuard />
+            {children}
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -1,7 +1,7 @@
 # Arsitektur aplikasi belajar
 
-Status (2026-11-01): runtime v1 dipertahankan dan alur guru manual v2 tersedia
-secara lokal. Kesiapan hosted tetap gate terpisah. Tujuan produk di [PRD](PRD.md), detail format di
+Status (2026-11-02): runtime v1 dipertahankan dan alur guru manual serta
+pengalaman komuter v2 tersedia secara lokal. Kesiapan hosted tetap gate terpisah. Tujuan produk di [PRD](PRD.md), detail format di
 [CONTENT_CONTRACT](CONTENT_CONTRACT.md), urutan/bukti di [rencana](IMPLEMENTATION_PLAN.md).
 
 ## Stack dan batas domain
@@ -55,7 +55,7 @@ composite `status ASC, completedAt DESC, __name__ DESC` dan
 1. Pengguna menyalin JSON paket dari guru LLM atau memilih file. Preview memvalidasi
    bentuk, ukuran, referensi, duplikat, dan isi teks sebelum konfirmasi impor.
    Paket v2 berisi materi/soal tanpa kunci penilaian. Kunci v1 tidak dikonversi otomatis.
-2. UI minimum menampilkan soal dalam satu halaman. Jawaban, komentar, refleksi, dan posisi
+2. UI komuter menampilkan satu soal per layar. Jawaban, komentar, refleksi, dan posisi
    terakhir disimpan sebagai pekerjaan berevisi. Jeda tidak menutup sesi; submit
    adalah keputusan pengguna untuk mengakhiri pengerjaan, bukan hasil penilaian.
 3. Saat pengguna meminta laporan, bekukan snapshot beridentitas UUID yang berisi paket dan
@@ -98,22 +98,27 @@ parsial dan tidak menilai. Context membatasi 10 snapshot, 40 feedback, dan 512 K
 riwayat yang melampaui batas ditolak tanpa pemotongan. Penanda feedback per snapshot
 membuat transaksi impor bersamaan membaca dan memvalidasi ulang seluruh riwayat.
 
-## Penyimpanan draf perangkat — rencana N3
+## Penyimpanan draf perangkat
 
-Gunakan IndexedDB browser tanpa dependency baru. Simpan hanya jawaban, komentar,
-refleksi, posisi terakhir, identitas paket/pekerjaan, dan metadata revisi; namespace
-menurut UID dan pekerjaan. Tulis lokal dahulu dan serialkan simpan server. Respons
-server yang terlambat tidak boleh menghapus ketikan lebih baru.
+IndexedDB menyimpan jawaban, komentar, refleksi, posisi terakhir, identitas
+paket/pekerjaan, dan metadata revisi serta mutasi menurut UID, pekerjaan dan cabang.
+Setiap perubahan ditulis lokal dahulu; autosimpan server diserialkan. Payload dan
+operation ID yang belum pasti disimpan untuk retry identik setelah reload. Respons
+server yang terlambat tidak mengganti ketikan baru. Penanda UID per tab disimpan di
+sessionStorage; token, paket, kunci, dan report tidak disimpan dalam draf.
 
 Saat tersambung kembali, kirim snapshot dengan revisi server yang diketahui.
 Konflik harus memperlihatkan pilihan pemulihan sambil menjaga salinan lokal.
-Jangan mengganti draf lokal atau server secara diam-diam. Saat sign-out/ganti akun,
-peringatkan pekerjaan belum tersinkron sebelum membersihkan data lokal privat;
-pekerjaan akun lain tidak boleh ditampilkan atau dikirim.
+Jangan mengganti draf lokal atau server secara diam-diam. Sign-out yang dapat
+batal memperingatkan draf belum tersinkron. Jika akun berubah dari luar tab, request
+lama dibatalkan, tampilan diisolasi, dan draf akun lama dibersihkan tanpa dialog;
+notifikasi tidak memuat data privat.
 
 IndexedDB dapat gagal, kehabisan ruang, atau dihapus browser. Bedakan status
 tersimpan lokal, tersimpan server, dan gagal; jangan menjanjikan ketahanan mutlak.
-Tidak ada background sync atau cache report. Materi tetap membutuhkan internet;
+Jika IndexedDB gagal, simpan server atau salin input tersedia dengan peringatan
+bahwa retry dan pemulihan lokal setelah reload tidak dijamin. Tidak ada background
+sync atau cache report. Materi tetap membutuhkan internet;
 pemasangan ke layar utama tidak menambah jaminan penggunaan offline.
 
 <a id="security-caching-and-operations"></a>
