@@ -176,6 +176,8 @@ describe("authenticated API boundary", () => {
       "/api/progress",
       "/api/teacher/context",
       "/api/v2/packs",
+      "/api/v2/home",
+      "/api/v2/progress",
       "/api/v2/packs/import",
       "/api/v2/packs/example",
       "/api/v2/works",
@@ -1553,6 +1555,23 @@ describe("authenticated API boundary", () => {
         ...init,
         headers: { Authorization: `Bearer ${tokens[owner]}`, "Content-Type": "application/json" },
       });
+    for (const path of ["home", "progress"]) {
+      const success = await call(path);
+      expect(success.status).toBe(200);
+      expect(success.headers.get("cache-control")).toBe("private, no-store");
+      expect(success.headers.get("vary")).toContain("Authorization");
+      const denied = await fetch(`http://127.0.0.1:3100/api/v2/${path}`);
+      expect(denied.status).toBe(401);
+      expect(denied.headers.get("cache-control")).toBe("private, no-store");
+      expect(denied.headers.get("vary")).toContain("Authorization");
+    }
+    const invalid = await call("home", 0, {
+      method: "PUT",
+      body: JSON.stringify({ packId: "../invalid" }),
+    });
+    expect(invalid.status).toBe(422);
+    expect(invalid.headers.get("cache-control")).toBe("private, no-store");
+    expect(invalid.headers.get("vary")).toContain("Authorization");
     const response = await call("progress");
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("private, no-store");

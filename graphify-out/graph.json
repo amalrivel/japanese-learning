@@ -6795,7 +6795,7 @@
       "file_type": "code",
       "norm_label": "start()",
       "source_file": "tests/integration/auth-api.test.ts",
-      "source_location": "L260"
+      "source_location": "L262"
     },
     {
       "id": "tests_integration_auth_api_test_startserver",
@@ -49595,7 +49595,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/features/analytics/home-v2.tsx",
-      "source_location": "L189",
+      "source_location": "L195",
       "weight": 1.0
     },
     {
@@ -49607,7 +49607,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/features/analytics/home-v2.tsx",
-      "source_location": "L208",
+      "source_location": "L214",
       "weight": 1.0
     },
     {
@@ -51635,7 +51635,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/features/practice/manual-learning.tsx",
-      "source_location": "L412",
+      "source_location": "L417",
       "weight": 1.0
     },
     {
@@ -52811,7 +52811,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/integration/auth-api.test.ts",
-      "source_location": "L709",
+      "source_location": "L711",
       "weight": 1.0
     },
     {
@@ -105102,5 +105102,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "5282dc5a2604b4a459f0c7965ecb155aa7a526f0"
+  "built_at_commit": "0a403deb72bbae5e5e62cb1944e4403373e3cb3f"
 }

@@ -13,6 +13,13 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  webpack(config) {
+    config.module.rules.push({
+      test: /globals\.css$/,
+      use: [{ loader: require.resolve("@tailwindcss/turbopack") }],
+    });
+    return config;
+  },
   async headers() {
     return [
       {

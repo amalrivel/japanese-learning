@@ -204,7 +204,11 @@ export function ManualLearning() {
         <section className="space-y-3">
           <h2 className="text-xl font-semibold">Materi: {pack.title}</h2>
           {pack.furigana === "toggle" && (
-            <Button variant="outline" onClick={() => setShowReading(!showReading)}>
+            <Button
+              className="min-h-11"
+              variant="outline"
+              onClick={() => setShowReading(!showReading)}
+            >
               {showReading ? "Sembunyikan furigana" : "Tampilkan furigana"}
             </Button>
           )}
@@ -226,6 +230,7 @@ export function ManualLearning() {
             </article>
           ))}
           <Button
+            className="min-h-11"
             disabled={busy}
             onClick={() =>
               void run(async () => {

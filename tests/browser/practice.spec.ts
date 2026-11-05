@@ -1162,6 +1162,8 @@ test("N3 commuter draft survives offline editing and reload", async ({ page, con
     .getByRole("button", { name: "Mulai pekerjaan" })
     .click();
   await expect(page.getByRole("heading", { name: pack.title })).toBeVisible();
+  const startControl = page.getByRole("button", { name: "Mulai latihan" });
+  expect((await startControl.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await expect(page.getByText("Tersimpan di server", { exact: true })).toBeVisible();
   await expect(page.locator("ruby rt")).toHaveCount(0);
   await page.getByRole("button", { name: "Tampilkan furigana" }).click();
@@ -1931,6 +1933,7 @@ test("N4 home selects a session and opens its material on mobile", async ({ page
   const pack = JSON.parse(readFileSync("examples/learning-pack.v2.json", "utf8"));
   pack.id = "n4-home-fixture";
   pack.title = "Sesi N4 untuk beranda";
+  pack.materials[0].content[0].text = "<img src=x onerror=window.n5Executed=1>";
   const root = getFirestore(app).collection("users").doc(users[0]);
   await root.collection("learningPacks").doc(pack.id).set({ pack });
   await page.setViewportSize({ width: 375, height: 750 });
@@ -1938,14 +1941,24 @@ test("N4 home selects a session and opens its material on mobile", async ({ page
   await page.goto(origin);
   await expect(page.getByRole("heading", { name: "Sesi berikutnya" })).toBeVisible();
   await page.getByText("Pilih atau ganti sesi").click();
-  await page.getByRole("button", { name: pack.title, exact: true }).click();
+  const selectSession = page.getByRole("button", { name: pack.title, exact: true });
+  expect((await selectSession.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await selectSession.click();
   await expect(page.getByRole("link", { name: "Lihat materi dan mulai" })).toBeVisible();
   await page.reload();
   await page.getByRole("link", { name: "Lihat materi dan mulai" }).click();
   await expect(page.getByRole("heading", { name: `Materi: ${pack.title}` })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await expect(page.getByText("<img src=x onerror=window.n5Executed=1>")).toBeVisible();
+  expect(await page.evaluate(() => Reflect.get(window, "n5Executed"))).toBeUndefined();
+  expect(await page.locator("main img").count()).toBe(0);
   await expect(page.getByRole("button", { name: "Mulai pekerjaan" }).first()).toBeVisible();
   const manifest = await (await page.request.get(`${origin}/manifest.webmanifest`)).json();
   expect(manifest.start_url).toBe("/");
+  expect(manifest.scope).toBe("/");
+  expect(manifest.display).toBe("standalone");
   expect(
     await page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length),
   ).toBe(0);

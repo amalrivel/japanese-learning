@@ -54,6 +54,20 @@ Pada Android gunakan menu browser untuk memasang atau menambahkan ke layar utama
 pada iPhone gunakan Bagikan lalu Tambah ke Layar Utama. Opsi berbeda antar-browser.
 Aplikasi ini online dan tidak menjanjikan materi tersedia tanpa jaringan.
 
+## Skenario uji pengguna sekitar 10 menit
+
+Dengan akun dan lingkungan uji yang sudah diizinkan, impor contoh paket v2 melalui
+`/manual`, baca materi, jawab satu soal dan isi komentar. Jeda, buka kembali pekerjaan,
+dan periksa jawaban serta posisi. Simpan lalu buat snapshot dan ekspor konteks; catat
+revisi yang diekspor. Sesuaikan target contoh feedback dan anotasi dengan snapshot,
+work, revisi, dan ID feedback yang diekspor sebelum impor, lalu periksa hasil guru.
+Di beranda lihat cakupan progres dan pilih paket berikutnya. Gunakan data uji saja.
+
+Percobaan pada ponsel pribadi, termasuk pemasangan dan pemulihan setelah aplikasi
+tertutup, masih memerlukan pengguna dan lingkungan hosted yang disetujui. Audit
+produksi terbaru juga masih menemukan dependency moderat; lihat bukti N5 sebelum
+menggunakan lingkungan hosted atau menyatakan rilis siap.
+
 ## Menjalankan aplikasi
 
 Gunakan Node `>=24.15.0 <25` dan npm. `.nvmrc` memilih versi teruji 24.22.1;

@@ -132,7 +132,12 @@ export function HomeV2() {
             <Link className="underline" href={`/manual?pack=${encodeURIComponent(home.pack.id)}`}>
               Lihat materi dan mulai
             </Link>
-            <Button variant="outline" disabled={busy} onClick={() => void select(null)}>
+            <Button
+              className="min-h-11"
+              variant="outline"
+              disabled={busy}
+              onClick={() => void select(null)}
+            >
               Hapus pilihan
             </Button>
           </>
@@ -151,6 +156,7 @@ export function HomeV2() {
             {packs.items.map((p) => (
               <Button
                 key={p.id}
+                className="min-h-11"
                 variant="outline"
                 disabled={busy}
                 onClick={() => void select(p.id)}
@@ -159,7 +165,7 @@ export function HomeV2() {
               </Button>
             ))}
             {packs.nextCursor && (
-              <Button variant="outline" onClick={() => void more()}>
+              <Button className="min-h-11" variant="outline" onClick={() => void more()}>
                 Paket lainnya
               </Button>
             )}

@@ -14,7 +14,7 @@ Indonesia; catatan historis di bagian arsip dipertahankan dalam bentuk aslinya.
 | N2 Alur guru manual | Selesai secara lokal | Impor paket → pekerjaan → snapshot → impor feedback/anotasi |
 | N3 Pengalaman komuter | Selesai secara lokal | Bahasa Indonesia, satu soal per layar, materi/furigana, nikki, draf HP + server |
 | N4 Progres dan PWA | Selesai secara lokal | Aktivitas vs hasil guru, target belajar, halaman utama sesi berikutnya, pemasangan online |
-| N5 Verifikasi akhir | Belum dimulai | Suite lengkap dan gate hosted yang terbukti, bukan diasumsikan |
+| N5 Verifikasi akhir | Verifikasi lokal lulus; risiko audit dan gate eksternal terbuka | Suite lengkap dan gate hosted yang terbukti, bukan diasumsikan |
 
 M1–M6 adalah implementasi v1 yang telah diuji. M7 masih memiliki gate hosted dan
 M8 dulu ditunda; keduanya tetap riwayat. Gate rilis hosted tidak menghalangi
@@ -221,6 +221,97 @@ Gate hosted: Google/domain/allowlist, HTTPS/private headers, index dan query pro
 revocation/disabled account. Native picker dan BFCache restoration memerlukan bukti
 tersendiri. Akses baca LLM tidak dijanjikan hanya karena API ada. Bila akses tersebut
 belum terbukti, ekspor manual tetap jalur utama. Deployment menunggu permintaan pemilik.
+
+### Bukti N5 (2026-11-05)
+
+Verifikasi memakai Node 24.22.1, npm 11.19.1, Java 21, Auth/Firestore emulator
+`demo-learning-pwa`, dan Chrome lokal. Tidak ada data produksi atau perubahan cloud.
+
+- `npm run lint`, `npm run typecheck`, `npm run test:unit`: PASS; 39 tes unit.
+- `npm run test:emulators`: PASS; 13 integrasi dan 7 rules. Header sukses/error,
+  HEAD, dan OPTIONS untuk endpoint v2 baru termasuk dalam pemeriksaan.
+- `npm run test:e2e:emulators`: PASS, 25 tes sebelum perbaikan CSS. Materi v2
+  dengan markup hostile tetap berupa teks; manifest, ikon, dan cache kosong diperiksa.
+  Setelah perbaikan, ulangan terfokus N3/N4 PASS, termasuk tinggi sentuh 44px.
+  Navigasi kembali setelah sign-out aman dalam tes, tetapi BFCache tidak teramati.
+  `setInputFiles` bukan pengujian dialog file sistem operasi.
+- Satu `npm run build` dalam salinan sementara tanpa `.env` atau kredensial selesai
+  dengan exit 0, tetapi inspeksi menemukan utilitas Tailwind tidak dikompilasi:
+  konfigurasi loader hanya berlaku untuk Turbopack, sedangkan build memakai webpack.
+  Loader terpasang kini juga didaftarkan pada webpack; kontrol beranda disesuaikan
+  agar target sentuh minimal 44px. Browser development terfokus lulus setelah
+  perbaikan. Karena batas satu build, build produksi setelah perbaikan belum diuji.
+  Pada build sebelum perbaikan, 59 file JavaScript client tidak memuat 11 penanda
+  jawaban contoh atau penanda Admin yang diperiksa; bundle akhir belum diperiksa.
+- `npm audit --omit=dev`: FAIL (exit 1), enam entri moderat transitif.
+  `npm audit`: FAIL (exit 1), 26 entri: 24 moderat dan 2 rendah, termasuk enam
+  entri produksi tersebut. Tidak ada upgrade otomatis. Jalur produksi meliputi
+  Firebase Admin → Firestore → firestore-api → google-gax/gaxios → rimraf → glob
+  → minimatch. Dua advisori baru: [GHSA-3g3m-2fjr-6pw4](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4)
+  (pembatalan traversal) dan [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249)
+  (amplifikasi pola dan potensi denial of service). Kode aplikasi tidak memanggil
+  glob secara langsung; keterjangkauan eksploitasi lewat alur aplikasi belum
+  dibuktikan. Tinjau solusi kompatibel dan ulangi audit sebelum rilis. Audit penuh
+  juga memuat advisori dev lama GHSA-8988-4f7v-96qf, GHSA-gcqx-w48m-w2h4 dan
+  GHSA-w5hq-g745-h8pq; jumlah entri bukan jumlah advisori unik.
+- `graphify update .`: PASS secara AST-only, dengan fallback sequential; cadangan
+  graph historis dipertahankan. `git diff --check`: PASS.
+
+Alur emulator telah diuji, tetapi build produksi akhir belum diverifikasi dan gate
+audit tidak bersih; N5 belum selesai. Aplikasi dapat dicoba pada development lokal
+dengan data uji, tetapi kesiapan build produksi dan hosted belum terbukti.
+Tidak tersedia URL hosted/akun tes yang diotorisasi dalam tugas, dan tidak ada tautan
+proyek Firebase atau Vercel lokal. HTTPS, Google sign-in/allowlist, rules/indeks,
+query hosted serta revoked-token/disabled-user tetap tertunda secara read-only;
+tidak ada token dicabut atau akun dinonaktifkan. Pemasangan dan keyboard ponsel fisik,
+dialog file sistem operasi, serta BFCache restoration juga belum diverifikasi.
+
+### Lanjutan bukti N5 — build dan advisori (2026-11-05)
+
+Bukti ini memperbarui keterbatasan build pada catatan N5 sebelumnya; catatan itu
+menggambarkan keadaan sebelum ulangan setelah perbaikan CSS.
+
+- Build produksi bersih setelah perbaikan: PASS, `npm run build` memakai salinan
+  sementara, lockfile dan dependency proyek tanpa `.env` atau konfigurasi npm pribadi.
+  CSS hasil build memuat utilitas dan tidak lagi memuat direktif `@tailwind utilities`
+  atau `@theme inline` mentah. Pada server produksi lokal dan Chrome viewport 375×667,
+  heading halaman sign-in aktual memiliki ukuran 24px dan bobot 600, body memakai
+  flex, dan tidak ada overflow horizontal. Elemen uji dengan kelas tombol aplikasi
+  yang sama memiliki tinggi 44px dan padding 10px; elemen ini adalah probe CSS,
+  bukan tombol terautentikasi pada deployment hosted.
+- Pemeriksaan bundle hasil build ini: 59 file JavaScript client tidak mengandung
+  11 penanda jawaban fixture atau penanda Admin yang diperiksa. `npm run lint`,
+  `npm run typecheck`, 39 unit, 13 integrasi, 7 rules, dan 25 browser lulus setelah
+  perbaikan. Tes memakai Auth/Firestore emulator demo, bukan data produksi.
+- Audit produksi ulang masih exit 1 dengan enam entri moderat pada dua advisori
+  yang disebut di atas. Jalur lockfile: `firebase-admin@14.5.0` →
+  `@google-cloud/firestore@9.4.0` → `@google-cloud/firestore-api@0.2.0` →
+  `google-gax@5.0.8` → `rimraf@5.0.10` → `glob@10.5.0` → `minimatch@9.0.9`;
+  jalur lain melalui `google-auth-library@10.5.0` → `gcp-metadata@8.1.4` →
+  `gaxios@7.1.3` juga menuju rimraf. Kode aplikasi dan JavaScript terkompilasi
+  GAX/Gaxios yang diperiksa tidak mengimpor atau memanggil rimraf/glob secara
+  langsung. `glob` sendiri memakai optimisasi minimatch level 2, sehingga pola
+  glob yang dikendalikan penyerang tetap kondisi relevan jika jalur itu dipanggil.
+- Pada Auth emulator (verifikasi token termasuk cek revokasi) dan operasi baca,
+  tulis, query, serta transaksi Firestore demo, trace `require.cache` menunjukkan
+  firestore-api, GAX 5.0.8, dan Gaxios 7.1.3 dimuat; rimraf, glob dan minimatch
+  tidak teramati dimuat. Ini hanya observasi CommonJS dan operasi tersebut, bukan
+  bukti seluruh jalur produksi tidak rentan. Potensi traversal setelah pembatalan
+  dan denial of service jika input pola mencapai fungsi terdampak tetap terbuka.
+- Metadata npm publik saat pemeriksaan: Firebase Admin 14.5.0 dan Firestore 9.4.0
+  sudah terbaru; rentang `^0.2.0` hanya memiliki firestore-api 0.2.0 dan GAX `^5`
+  terbaru 5.0.8 masih bergantung pada rimraf `^5`. Firestore-api 0.7.1 memakai
+  GAX 6 tetapi berada di luar rentang Firestore 9.4.0. Gaxios 7.3.1 menghapus
+  rimraf, tetapi gcp-metadata 8.1.4 mematok 7.1.3 dan GAX 5 tetap memiliki jalur
+  rimraf sendiri. Simulasi `npm update firebase-admin --package-lock-only` tanpa
+  skrip pada salinan sementara mempertahankan versi tersebut dan audit produksi
+  tetap enam moderat. Tidak ada upgrade atau override paksa; tunggu pembaruan
+  induk yang kompatibel, tinjau ulang dependency tree dan audit sebelum rilis.
+
+Verifikasi lokal pasca-perbaikan lulus; audit produksi tetap tidak bersih dan bukan
+bukti bahwa risiko di atas nihil. Kesiapan hosted, indeks/rules, autentikasi nyata,
+revokasi, pemasangan dan keyboard ponsel fisik, picker OS, serta BFCache restoration
+tetap gate terpisah. N5 belum dinyatakan selesai sepenuhnya.
 
 ## Bukti N0–N1 (2026-11-01)
 
