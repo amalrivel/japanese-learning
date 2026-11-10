@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { summarizeV2 } from "@/features/analytics/progress-v2";
-import { learningPackV2Schema } from "@/features/content/schema-v2";
-import { learningWorkV2Schema } from "@/features/practice/work-schema-v2";
-import { teacherFeedbackV2Schema } from "@/features/analytics/teacher-schema-v2";
+import { summarizeV2 } from "@/features/analytics/model/progress-v2";
+import { learningPackV2Schema } from "@/features/content/model/schema-v2";
+import { learningWorkV2Schema } from "@/features/practice/model/work-schema-v2";
+import { teacherFeedbackV2Schema } from "@/features/analytics/model/teacher-schema-v2";
 const fixture = (name: string) => JSON.parse(readFileSync(`examples/${name}.v2.json`, "utf8"));
 describe("v2 progress", () => {
   it("counts partial work separately from assessment observations and skills", () => {

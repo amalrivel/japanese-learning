@@ -1,7 +1,7 @@
 import { FieldPath } from "firebase-admin/firestore";
-import { selectionSchema } from "@/features/analytics/progress-v2.server";
-import { learningWorkV2Schema } from "@/features/practice/work-schema-v2";
-import { learningPackV2Schema } from "@/features/content/schema-v2";
+import { selectionSchema } from "@/features/analytics/server/progress-v2.server";
+import { learningWorkV2Schema } from "@/features/practice/model/work-schema-v2";
+import { learningPackV2Schema } from "@/features/content/model/schema-v2";
 import { getFirebaseAdmin } from "@/lib/firebase/admin";
 import { apiError, apiJson, readJson, withAuthenticatedUser } from "@/lib/api/server";
 export function GET(request: Request) {

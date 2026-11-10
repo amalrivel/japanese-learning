@@ -5,8 +5,8 @@ import {
   readJson,
   withAuthenticatedUser,
 } from "@/lib/api/server";
-import { MAX_IMPORT_BYTES, validatePack } from "@/features/content/schema";
-import { importPack } from "@/features/content/packs.server";
+import { MAX_IMPORT_BYTES, validatePack } from "@/features/content/model/schema";
+import { importPack } from "@/features/content/server/packs.server";
 
 export function POST(request: Request) {
   return withAuthenticatedUser(request, async (uid) => {

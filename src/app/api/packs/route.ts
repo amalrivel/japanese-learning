@@ -1,5 +1,5 @@
 import { apiError, apiJson, methodNotAllowed, withAuthenticatedUser } from "@/lib/api/server";
-import { listPacks, parseCursor } from "@/features/content/packs.server";
+import { listPacks, parseCursor } from "@/features/content/server/packs.server";
 export function GET(request: Request) {
   return withAuthenticatedUser(request, async (uid) => {
     const params = new URL(request.url).searchParams;

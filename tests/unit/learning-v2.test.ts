@@ -1,18 +1,18 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { validatePack, MAX_IMPORT_BYTES } from "@/features/content/schema";
-import { learningPackV2Schema } from "@/features/content/schema-v2";
+import { validatePack, MAX_IMPORT_BYTES } from "@/features/content/model/schema";
+import { learningPackV2Schema } from "@/features/content/model/schema-v2";
 import {
   isAnsweredV2,
   learningWorkV2Schema,
   workMatchesPackV2,
-} from "@/features/practice/work-schema-v2";
+} from "@/features/practice/model/work-schema-v2";
 import {
   feedbackMatchesContextV2,
   parseLearningDataV2,
   teacherContextV2Schema,
   teacherFeedbackV2Schema,
-} from "@/features/analytics/teacher-schema-v2";
+} from "@/features/analytics/model/teacher-schema-v2";
 
 const read = (name: string) => JSON.parse(readFileSync(`examples/${name}.json`, "utf8"));
 const pack = () => learningPackV2Schema.parse(read("learning-pack.v2"));

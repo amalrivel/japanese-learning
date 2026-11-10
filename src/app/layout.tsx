@@ -4,7 +4,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/lib/auth/client";
-import { DraftAccountGuard } from "@/features/practice/draft-account-guard";
+import { DraftAccountGuard } from "@/features/practice/drafts/draft-account-guard";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -20,6 +20,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Personalized Learning",
+  robots: { index: false, follow: false },
   icons: { apple: "/apple-touch-icon.png" },
   description: "Ruang belajar bahasa Jepang pribadi secara online.",
 };

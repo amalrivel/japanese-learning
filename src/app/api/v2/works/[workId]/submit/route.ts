@@ -1,7 +1,7 @@
-import { withinDepthV2 } from "@/features/content/schema-v2";
-import { attemptIdSchema } from "@/features/practice/answers";
-import { submitWorkV2Schema } from "@/features/practice/work-v2-request";
-import { changeWorkV2 } from "@/features/practice/work-v2.server";
+import { withinDepthV2 } from "@/features/content/model/schema-v2";
+import { attemptIdSchema } from "@/features/practice/model/answers";
+import { submitWorkV2Schema } from "@/features/practice/model/work-v2-request";
+import { changeWorkV2 } from "@/features/practice/server/work-v2.server";
 import { apiError, apiJson, readJson, withAuthenticatedUser } from "@/lib/api/server";
 
 type Context = { params: Promise<{ workId: string }> };

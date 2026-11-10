@@ -1,5 +1,5 @@
-import { attemptIdSchema, draftSchema } from "@/features/practice/answers";
-import { submitAttempt } from "@/features/practice/attempts.server";
+import { attemptIdSchema, draftSchema } from "@/features/practice/model/answers";
+import { submitAttempt } from "@/features/practice/server/attempts.server";
 import {
   apiError,
   apiJson,

@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
-import { summarize, type CompletedAttempt } from "@/features/analytics/summary";
-import { nextPackConstraints, teacherContextSchema } from "@/features/analytics/teacher-schema";
+import { summarize, type CompletedAttempt } from "@/features/analytics/model/summary";
+import { nextPackConstraints, teacherContextSchema } from "@/features/analytics/model/teacher-schema";
 it("counts each exercise once overall and once per skill, using the newest labels", () => {
   const latest: CompletedAttempt = {
     subject: { id: "jp" },

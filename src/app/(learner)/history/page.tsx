@@ -1,5 +1,7 @@
-import { HistoryList } from "@/features/practice/lists";
+import { redirect } from "next/navigation";
+
 export const instant = false;
-export default function HistoryPage() {
-  return <HistoryList />;
+
+export default function Page() {
+  redirect("/manual/works");
 }

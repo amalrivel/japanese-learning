@@ -1,5 +1,18 @@
 # Arsitektur aplikasi belajar
 
+Keputusan navigasi terbaru (11 November 2026): UI produk hanya memakai alur v2.
+Beranda dan `/manual` menjadi tujuan utama; URL layar v1 mengarahkan ke bagian
+terbaru. Tidak ada konversi ID pekerjaan v1 menjadi v2. Implementasi API/domain
+v1 tetap internal untuk kompatibilitas dan pengujian, bukan alur navigasi produk.
+Bagian runtime v1 di bawah menjelaskan kemampuan internal yang dipertahankan.
+
+Workspace terbaru memakai layout persisten di `/manual`. Halaman ringkasan,
+panduan (`guide`), impor (`import`), paket/pekerjaan (`works`), latihan (`study`),
+dan ekspor/feedback (`teacher`) mempunyai URL masing-masing. Layout mempertahankan
+state browser ketika berpindah dengan Link; halaman latihan memakai query `pack`
+atau `work` agar dapat dibuka langsung dan dimuat ulang. Respons pemuatan route
+yang sudah ditinggalkan diabaikan agar tidak menimpa tampilan yang sedang aktif.
+
 Status (2026-11-02): runtime v1 dipertahankan dan alur guru manual serta
 pengalaman komuter v2 tersedia secara lokal. Kesiapan hosted tetap gate terpisah. Tujuan produk di [PRD](PRD.md), detail format di
 [CONTENT_CONTRACT](CONTENT_CONTRACT.md), urutan/bukti di [rencana](IMPLEMENTATION_PLAN.md).
@@ -11,6 +24,11 @@ Zod, shadcn Base UI, dan npm yang sudah terpasang. Tidak ada repository framewor
 database tambahan, atau panggilan API LLM. `src/app` hanya route/layout tipis;
 `src/features` memuat aturan domain/UI/persistensi konkret; `src/lib` memuat
 infrastruktur bersama. Modul Admin dan persistensi tetap `server-only`.
+
+Fitur dikelompokkan menurut domain `content`, `practice`, dan `analytics`, lalu
+menurut tanggung jawab `components`, `model`, `server`, dan `client` bila diperlukan.
+Draf lokal ditempatkan bersama dalam `practice/drafts`. Lihat
+[panduan struktur fitur](../src/features/README.md) untuk aturan penempatan modul.
 
 Akun Google yang masuk harus terdaftar di `APP_ALLOWED_UIDS`. Semua akses data
 melalui Route Handler yang memverifikasi Firebase bearer token (termasuk revocation

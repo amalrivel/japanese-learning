@@ -9,7 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { deleteApp, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { assertDemoEmulators } from "@/../tests/helpers/emulator";
-import { teacherContextSchema } from "@/features/analytics/teacher-schema";
+import { teacherContextSchema } from "@/features/analytics/model/teacher-schema";
 
 const projectId = "demo-learning-pwa";
 const users = [
@@ -122,6 +122,7 @@ describe("authenticated API boundary", () => {
     testDirectory = await mkdtemp(join(tmpdir(), "learning-pwa-m2-"));
     for (const name of [
       "src",
+    "examples",
       "public",
       "next.config.ts",
       "tsconfig.json",
