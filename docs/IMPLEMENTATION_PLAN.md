@@ -313,6 +313,76 @@ bukti bahwa risiko di atas nihil. Kesiapan hosted, indeks/rules, autentikasi nya
 revokasi, pemasangan dan keyboard ponsel fisik, picker OS, serta BFCache restoration
 tetap gate terpisah. N5 belum dinyatakan selesai sepenuhnya.
 
+### Pembatasan pengindeksan pencarian (2026-11-07)
+
+Semua respons meminta `X-Robots-Tag: noindex, nofollow`; metadata halaman juga
+meminta `noindex, nofollow`. Tidak ada aturan `robots.txt` yang menghalangi crawler
+membaca instruksi tersebut. Ini bukan kontrol akses atau jaminan semua crawler patuh.
+Firebase Auth dan allowlist tetap diperlukan untuk melindungi data.
+
+Lint, typecheck, 39 unit, 13 integrasi, 7 rules, dan 26 browser lulus; build bersih
+lulus. Server produksi lokal memverifikasi header pada halaman, API, manifest,
+ikon, aset Next dan 404, serta metadata halaman dan header privat API. Graphify
+diperbarui secara AST-only. Header pada hosted dan penghapusan hasil pencarian yang
+sudah ada belum diverifikasi; perubahan ini belum di-deploy.
+
+### Pemeriksaan hosted read-only (2026-11-10)
+
+URL produksi yang diberikan pemilik merespons halaman publik tanpa header maupun
+metadata `noindex`; perubahan lokal belum di-deploy. Permintaan anonim ke
+`/api/v2/progress` menghasilkan HTTP 500 dengan body kosong, bukan respons 401
+aplikasi. Pada log permintaan anonim tersebut, fungsi gagal memuat `jose` melalui
+`jwks-rsa` dengan `ERR_REQUIRE_ESM` sebelum handler autentikasi berjalan.
+Reproduksi lokal memakai `NODE_OPTIONS=--no-experimental-require-module` juga gagal;
+modul termuat saat `--experimental-require-module` diaktifkan. Dokumentasi Vercel
+menyebut dukungan ini dinonaktifkan secara default dan menjelaskan opsi runtime:
+[Advanced Node.js Configuration](https://vercel.com/docs/functions/runtimes/node-js/advanced-node-configuration).
+
+Uji lanjutan memakai build produksi lokal yang bersih dan tanpa kredensial: dengan
+`NODE_OPTIONS=--no-experimental-require-module`, permintaan anonim menghasilkan
+500; dengan `--experimental-require-module`, respons menjadi 401. Kedua respons
+memuat `X-Robots-Tag: noindex, nofollow` serta `private, no-store`. Opsi tersebut
+belum diterapkan pada hosted dan bukti lokal bukan bukti login atau data hosted.
+
+Diagnosis ini belum membuktikan seluruh konfigurasi Firebase hosted berfungsi.
+Tidak ada environment atau pengaturan cloud yang diubah; deployment ditunda sesuai
+permintaan pemilik. Uji perbaikan pada deployment terisolasi dan verifikasi ulang
+respons autentikasi serta noindex sebelum promosi, setelah pemilik mengizinkannya.
+
+### Perbaikan impor salinan guru (2026-11-10)
+
+Teks paket yang diberikan pemilik mengandung `&#x20;` pada indentasi dan backslash
+sebelum pergantian baris, sehingga bukan JSON sah. Pratinjau file/paste `/manual`
+kini mencoba pembersihan format tersebut hanya di luar string jika parse asli
+gagal; pembungkus blok kode JSON juga dapat dilepas. JSON hasil pembersihan tetap
+melalui batas byte/depth, schema, dan referensi yang sama. Pemberitahuan meminta
+pengguna memeriksa pratinjau sebelum konfirmasi; tidak ada penulisan otomatis.
+Pesan membedakan sintaks, ukuran, versi, jenis dokumen, dan path schema bermasalah.
+
+Teks asli pemilik berhasil divalidasi setelah pembersihan; isi sama dengan JSON
+yang hanya dibersihkan format salinannya. Tidak ada kredensial atau data produksi
+yang digunakan.
+
+- `npm run test:unit`: PASS, 44 tes. Termasuk salinan LF/CRLF, blok kode,
+  feedback, pelestarian escape/entitas di dalam string, dan penolakan sintaks atau
+  schema yang tetap salah. Lint dan typecheck: PASS.
+- `npm run test:emulators`: PASS, 13 integrasi dan 7 rules pada project demo.
+- Browser lengkap: 24 dari 26 tes lulus pada run awal. Pemilih pesan error tes
+  impor juga menangkap announcer Next.js; pemilih disempitkan ke pesan impor.
+  Tes penanda akun antar-tab gagal pada run awal dan lulus tanpa perubahan
+  implementasi pada ulangan terfokus. Ulangan kedua tes: PASS. Alur impor memeriksa
+  paste/file yang ter-escape, path schema, isi pratinjau, tidak ada POST sebelum
+  konfirmasi, serta loop simpan/snapshot/feedback. Suite penuh tidak diulang.
+- Build produksi: PASS, memakai salinan sementara dengan dependency yang sama,
+  environment bersih, tanpa `.env` atau kredensial. `git diff --check`: PASS.
+- `graphify update .`: PASS, AST-only, 3484 node dan 5619 edge. Ekstraksi memakai
+  fallback sequential; cadangan graph sebelumnya dipertahankan. Label semantik
+  tidak diperbarui oleh LLM.
+
+Perbaikan masih lokal; tidak ada commit, push, deployment, atau perubahan cloud.
+Error runtime hosted `ERR_REQUIRE_ESM` pada catatan sebelumnya belum diperbaiki
+oleh perubahan pratinjau ini. Kesiapan hosted dan gate N5 lainnya tetap terbuka.
+
 ## Bukti N0–N1 (2026-11-01)
 
 Pada saat bukti ini dicatat, N0 dan N1 selesai; N2 menjadi tahap berikutnya. Keenam panduan diselaraskan, tiga

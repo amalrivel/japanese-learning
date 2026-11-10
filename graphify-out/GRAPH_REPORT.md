@@ -1,37 +1,37 @@
-# Graph Report - japanese-learning  (2026-11-05)
+# Graph Report - japanese-learning  (2026-11-11)
 
 ## Corpus Check
-- 262 files · ~317,633 words
+- 280 files · ~324,600 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 61 file(s) not represented in the graph (top: .csv 53, (none) 4, .css 2)
+- Unclassified: 62 file(s) not represented in the graph (top: .csv 53, (none) 4, .css 2)
 
 ## Summary
-- 3479 nodes · 5606 edges · 210 communities (184 shown, 26 thin omitted)
-- Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 339 edges (avg confidence: 0.91)
+- 3538 nodes · 5702 edges · 218 communities (183 shown, 35 thin omitted)
+- Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 340 edges (avg confidence: 0.91)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `0a403deb`
+- Built from commit: `f66b7be7`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - withAuthenticatedUser
-- schema-v2.ts
-- attempts.server.ts
+- teacher-schema-v2.ts
+- answers.ts
 - practice.spec.ts
-- csv
-- dropdown-menu.tsx
+- parse_decision_rules
+- react
 - components.json
-- field.tsx
+- shadcn/ui
 - package.json
 - compilerOptions
 - devDependencies
-- client.tsx
+- packs.server.ts
 - Implementation Plan
 - dependencies
 - scripts
-- react
+- import-form.test.tsx
 - Document File Icon
 - Stylized Globe Icon
 - Next.js Wordmark Logo
@@ -40,35 +40,35 @@
 - ShadcnInstaller
 - scripts/core.py
 - gray
-- logo/core.py
-- render
+- button.tsx
+- dropdown-menu (Radix `DropdownMenu` → Base UI `Menu`)
 - slide_search_core.py
 - Tailwind CSS Utility Reference
-- pathlib
+- json
 - validate_data.py
 - Brand Guidelines v1.0
-- report.tsx
+- schema.ts
 - Design
 - Canvas Design System
 - spacing
 - design_system.py
-- icon/generate.py
-- The Design System Page
+- re
+- app/layout.tsx
 - Form & Input Components
 - Tailwind CSS Responsive Design
-- json
+- fetch-background.py
 - Typography Specifications
 - Logo Usage Rules
 - Component Specifications
 - html-token-validator.py
 - shadcn/ui Accessibility Patterns
-- dropdown-menu (Radix `DropdownMenu` → Base UI `Menu`)
-- cip/generate.py
+- render
+- TestDomainDetection
 - Asset Approval Checklist
 - Logo AI Prompt Engineering
-- teacher-v2.server.ts
-- answers.ts
-- canonicalJson
+- commuter-draft.ts
+- home-v2.tsx
+- Button
 - Color Palette Management
 - CIP Deliverable Guide
 - States and Variants
@@ -79,29 +79,29 @@
 - Design System
 - toolbar
 - Tailwind CSS Customization
-- _palette_is_dark
+- TestStyleTaxonomy
 - generate-slide.py
 - alert-dialog
 - Routing by Task Type
-- request
+- attempts.server.ts
 - shadcn/ui Theming & Customization
 - TestTailwindConfigGenerator
 - Asset Organization Guide
 - Primary Color Meanings
 - Core Logo Types
 - color
-- CommuterDraft
+- methodNotAllowed
 - Brand Consistency Checklist
 - CIP Mockup Prompt Engineering
 - Color Semantics
 - Per-component notes
-- Button
+- getFirebaseAdmin
 - Design Principles
 - Design Principles
 - fontSize
 - manual-learning.tsx
-- methodNotAllowed
-- argparse
+- Forms & Inputs
+- logo/core.py
 - extract-colors.cjs
 - CIP Design Reference
 - Icon Design Reference
@@ -121,21 +121,21 @@
 - Logo Design Reference
 - Token Architecture
 - design-tokens-starter.json
-- navigation-menu (Radix `NavigationMenu` → Base UI `NavigationMenu`)
-- Commands
+- TestSearchDomains
+- CommuterDraft
 - Styling & Customization
 - .test_node_check_parses_generated_config
-- validate
-- TestDomainDetection
-- parse_decision_rules
-- render-html.py
+- navigation-menu (Radix `NavigationMenu` → Base UI `NavigationMenu`)
+- TestThresholdGate
+- teacher-schema.ts
+- argparse
 - DesignSystemGenerator
 - Primitive Tokens
 - embed-tokens.cjs
 - validate-tokens.cjs
 - card
 - form
-- slider
+- csv
 - Design Systems from DESIGN.md
 - Tools
 - Component Composition
@@ -143,65 +143,65 @@
 - inject-brand-context.cjs
 - CIP Design Style Guide
 - duration
-- toast
-- test_data_contracts.py
+- Commands
+- cip/core.py
+- field.tsx
 - popover
-- shadcn/ui
-- test_core.py
-- test_catalog_refresh.py
+- commuter-work.tsx
+- toast
 - Quick Reference
 - sync-brand-to-tokens.cjs
-- dialog
+- Chat & Messaging
 - Slide Strategies
 - Component Tokens
 - generate-tokens.cjs
 - button
-- cip/core.py
+- BM25
 - Target wrapper shapes (golden-derived specifics)
 - Slide Strategies
 - main
-- scroll-area
+- _select_palette_for_mode
 - Registry Authoring and Addresses
 - input
 - radius
-- _select_palette_for_mode
-- test_style_taxonomy.py
-- TestSearchDomains
+- tooltip
+- Brand
+- scroll-area
 - Base vs Radix
 - TailwindConfigGenerator
-- tooltip
-- test_text_layout_resilience.py
+- test_data_contracts.py
+- dialog
 - ui-ux-pro-max
-- Chat & Messaging
+- slider
 - Slides Reference
 - HTML Slide Template
 - Class-string rewrites (layer 2)
-- import-form.test.tsx
+- load-env.cjs
 - context-menu (Radix `ContextMenu` → Base UI `ContextMenu`)
 - Radix UI -> Base UI migration
 - tabs
 - HTML Slide Template
-- next
+- cip/search.py
 - Query Contract
 - sm
 - Consumer-side prop changes (call sites, not wrappers)
 - Slides
-- schema.ts
+- logo/search.py
 - Pre-Delivery Checklist
 - Prerequisites
 - Brand Guidelines Template
 - $type
 - radius
 - lg
-- home-v2.tsx
-- read_rows
+- request
+- showcase-coverage.mjs
 - Common Rules for Professional UI
 - Example Workflow
 - padding-y
 - xl
-- lists.tsx
+- TestBm25CoreBehavior
 - none
-- generate_design_system
+- shadcn CLI Reference
 - Tips for Better Results
 - destructive
 - destructive-foreground
@@ -211,14 +211,22 @@
 - secondary-foreground
 - slides-create.md
 - create.md
-- api/packs/route.ts
-- shadcn CLI Reference
-- ref_node_fs
+- starter-prompt.ts
+- TestTokenizer
 - 16
 - 1
 - 3
 - 8
-- logo/search.py
+- guide/page.tsx
+- manual/import/page.tsx
+- client.tsx
+- manual/page.tsx
+- Icons
+- Step 4: Map Tokens to the Theme
+- study/page.tsx
+- teacher/page.tsx
+- works/page.tsx
+- next
 
 ## God Nodes (most connected - your core abstractions)
 1. `render()` - 135 edges
@@ -226,7 +234,7 @@
 3. `withAuthenticatedUser()` - 50 edges
 4. `apiJson()` - 49 edges
 5. `apiError()` - 45 edges
-6. `Button()` - 36 edges
+6. `Button()` - 38 edges
 7. `TestTailwindConfigGenerator` - 35 edges
 8. `DesignSystemGenerator` - 35 edges
 9. `ShadcnInstaller` - 34 edges
@@ -247,43 +255,43 @@
 ## Import Cycles
 - None detected.
 
-## Communities (210 total, 26 thin omitted)
+## Communities (218 total, 35 thin omitted)
 
 ### Community 0 - "withAuthenticatedUser"
-Cohesion: 0.14
-Nodes (40): POST(), GET(), PATCH(), POST(), DELETE, GET(), PATCH, POST() (+32 more)
+Cohesion: 0.10
+Nodes (50): DELETE, GET, PATCH, POST(), PUT, Context, DELETE, GET() (+42 more)
 
-### Community 1 - "schema-v2.ts"
-Cohesion: 0.09
-Nodes (45): zod, Assessment, ProgressV2, selectionSchema, Snapshot, summarizeV2(), feedbackBase, feedbackMatchesContextV2() (+37 more)
+### Community 1 - "teacher-schema-v2.ts"
+Cohesion: 0.11
+Nodes (28): firebase-admin, server-only, GET(), Assessment, Snapshot, summarizeV2(), feedbackBase, feedbackMatchesContextV2() (+20 more)
 
-### Community 2 - "attempts.server.ts"
+### Community 2 - "answers.ts"
 Cohesion: 0.16
-Nodes (27): firebase-admin, server-only, cursorSchema, importPack(), learnerPack(), LearningPack, Answers, Ratings (+19 more)
+Nodes (20): zod, schema, Context, Context, idSchema, base, choice, exerciseSchema (+12 more)
 
 ### Community 3 - "practice.spec.ts"
-Cohesion: 0.06
-Nodes (27): components, missing, source, [uiArg, ...roots], uiDir, walk(), @firebase/rules-unit-testing, vitest (+19 more)
+Cohesion: 0.10
+Nodes (9): firebase, @firebase/rules-unit-testing, @playwright/test, teacherContextSchema, users, assertDemoEmulators(), assertFreePort(), startServer() (+1 more)
 
-### Community 4 - "csv"
-Cohesion: 0.13
-Nodes (8): read_rows(), TestAccessibilityGuidance, TestChartsTypographyAndIcons, TestCurrentReactGuidance, TestSemanticColors, contrast_ratio(), _font_names(), _relative_luminance()
+### Community 4 - "parse_decision_rules"
+Cohesion: 0.19
+Nodes (5): apply_decision_rules(), _object_without_duplicates(), parse_decision_rules(), _validate_action(), _check_reasoning_contract()
 
-### Community 5 - "dropdown-menu.tsx"
-Cohesion: 0.11
-Nodes (20): Assistant activity uses Trace, Items always inside their Group component, Icons, Icons in Button use data-icon attribute, No sizing classes on icons inside components, Pass icons as component objects, not string keys, Component Selection, Component Structure → [composition.md](./rules/composition.md) (+12 more)
+### Community 5 - "react"
+Cohesion: 0.14
+Nodes (17): Assistant activity uses Trace, Items always inside their Group component, Component Selection, Component Structure → [composition.md](./rules/composition.md), lucide-react, react, ModeToggle(), DropdownMenu() (+9 more)
 
 ### Community 6 - "components.json"
 Cohesion: 0.09
 Nodes (21): aliases, components, hooks, lib, ui, utils, iconLibrary, menuAccent (+13 more)
 
-### Community 7 - "field.tsx"
-Cohesion: 0.12
-Nodes (17): Buttons inside inputs use InputGroup + InputGroupAddon, Contents, Field validation and disabled states, FieldSet + FieldLegend for grouping related fields, Forms & Inputs, Forms use FieldGroup + Field, InputGroup requires InputGroupInput/InputGroupTextarea, Option sets (2–7 choices) use ToggleGroup (+9 more)
+### Community 7 - "shadcn/ui"
+Cohesion: 0.18
+Nodes (11): Component Docs, Examples, and Usage, Current Project Context, Design Systems from DESIGN.md, Detailed References, Key Fields, Key Patterns, Principles, Quick Reference (+3 more)
 
 ### Community 8 - "package.json"
-Cohesion: 0.08
-Nodes (22): eslintConfig, engines, node, name, overrides, @grpc/grpc-js, private, version (+14 more)
+Cohesion: 0.09
+Nodes (21): eslintConfig, engines, node, name, overrides, @grpc/grpc-js, private, version (+13 more)
 
 ### Community 9 - "compilerOptions"
 Cohesion: 0.11
@@ -293,25 +301,21 @@ Nodes (18): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModu
 Cohesion: 0.12
 Nodes (16): devDependencies, babel-plugin-react-compiler, eslint, eslint-config-next, @firebase/rules-unit-testing, firebase-tools, @playwright/test, prettier (+8 more)
 
-### Community 11 - "client.tsx"
-Cohesion: 0.14
-Nodes (21): Select.Root → Select.Root, firebase, react-dom, AuthContext, AuthProvider(), AuthState, getFirebaseAuth(), initializeAuth() (+13 more)
+### Community 11 - "packs.server.ts"
+Cohesion: 0.16
+Nodes (14): DELETE, GET(), PATCH, POST, PUT, DELETE, GET(), PATCH (+6 more)
 
 ### Community 12 - "Implementation Plan"
-Cohesion: 0.25
-Nodes (15): Project Instructions, Application Architecture, Authentication and Data Flow, Firestore Model, Server-side Grading, Content Contract, Authoritative Grading Rules, Implementation Plan (+7 more)
+Cohesion: 0.21
+Nodes (16): Project Instructions, Application Architecture, Authentication and Data Flow, Firestore Model, Server-side Grading, Content Contract, Authoritative Grading Rules, Implementation Plan (+8 more)
 
 ### Community 13 - "dependencies"
 Cohesion: 0.14
 Nodes (14): dependencies, @base-ui/react, class-variance-authority, cn, firebase, firebase-admin, lucide-react, next (+6 more)
 
 ### Community 14 - "scripts"
-Cohesion: 0.13
-Nodes (15): scripts, build, dev, emulators, format, format:check, lint, start (+7 more)
-
-### Community 15 - "react"
-Cohesion: 0.22
-Nodes (8): next-themes, react, geistMono, geistSans, inter, metadata, RootLayout(), ThemeProvider()
+Cohesion: 0.12
+Nodes (16): scripts, build, dev, dev:app, emulators, format, format:check, lint (+8 more)
 
 ### Community 22 - "ShadcnInstaller"
 Cohesion: 0.05
@@ -325,13 +329,13 @@ Nodes (31): BM25, _contains_phrase(), detect_domain(), _domain_keywords(), _exac
 Cohesion: 0.05
 Nodes (53): $type, $value, $type, $value, $type, $value, $type, $value (+45 more)
 
-### Community 25 - "logo/core.py"
-Cohesion: 0.12
-Nodes (6): BM25, detect_domain(), _load_csv(), search(), search_all(), _search_csv()
+### Community 25 - "button.tsx"
+Cohesion: 0.23
+Nodes (9): Cakupan penerapan dan verifikasi, Panduan UI — ruang belajar, LearnerLayout(), metadata, RootLayout(), NotFound(), AuthBoundary(), buttonVariants (+1 more)
 
-### Community 26 - "render"
-Cohesion: 0.09
-Nodes (38): Base UI only props worth knowing (checkbox), Base UI only props worth knowing (radio-group), Base UI only props worth knowing (select), Base UI only props worth knowing (switch), checkbox, Checkbox.Indicator → Checkbox.Indicator, Checkbox.Root → Checkbox.Root, CSS variable mapping (select) (+30 more)
+### Community 26 - "dropdown-menu (Radix `DropdownMenu` → Base UI `Menu`)"
+Cohesion: 0.10
+Nodes (20): Arrow → Menu.Arrow, Base UI only props worth knowing (Menu), CheckboxItem → Menu.CheckboxItem, Content → Menu.Portal > Menu.Positioner > Menu.Popup, CSS variable mapping (per menu flavor: `dropdown-menu` / `context-menu` / `menubar`), Data-attribute mapping (dropdown/context/menubar menus), dropdown-menu (Radix `DropdownMenu` → Base UI `Menu`), Group → Menu.Group (+12 more)
 
 ### Community 27 - "slide_search_core.py"
 Cohesion: 0.08
@@ -341,21 +345,21 @@ Nodes (17): format_context(), format_result(), main(), BM25, calculate_pattern_b
 Cohesion: 0.05
 Nodes (43): Arbitrary Values, Aspect Ratio, Background Colors, Border Color, Border Radius, Border Style, Border Width, Borders (+35 more)
 
-### Community 29 - "pathlib"
-Cohesion: 0.13
-Nodes (5): test_sync_parses_bundled_starter_template(), main(), _run(), test_flags_hardcoded_hex_sharing_line_with_token(), test_token_only_line_reports_no_violation()
+### Community 29 - "json"
+Cohesion: 0.10
+Nodes (6): test_sync_parses_bundled_starter_template(), main(), _run(), test_flags_hardcoded_hex_sharing_line_with_token(), test_token_only_line_reports_no_violation(), TestDiagnosticsContracts
 
 ### Community 30 - "validate_data.py"
-Cohesion: 0.15
-Nodes (23): _catalog_date(), _check_app_interface_contract(), _check_catalog_contract(), _check_catalog_summary(), _check_chart_contract(), _check_color_contract(), _check_core_data_contract(), _check_font_catalog() (+15 more)
+Cohesion: 0.07
+Nodes (42): read_rows(), TestAccessibilityGuidance, TestChartsTypographyAndIcons, TestCurrentReactGuidance, TestSemanticColors, _catalog_date(), _check_app_interface_contract(), _check_catalog_contract() (+34 more)
 
 ### Community 31 - "Brand Guidelines v1.0"
 Cohesion: 0.05
 Nodes (37): 1. Color Palette, 2. Typography, 3. Logo Usage, 4. Voice & Tone, 5. Imagery Guidelines, 6. Design Components, Accessibility, AI Image Generation (+29 more)
 
-### Community 32 - "report.tsx"
-Cohesion: 0.22
-Nodes (10): instant, ProgressPage(), instant, TeacherReportPage(), Context, Report(), copy(), download() (+2 more)
+### Community 32 - "schema.ts"
+Cohesion: 0.07
+Nodes (28): vitest, DELETE, GET, PATCH, PUT, preview(), accepted, base (+20 more)
 
 ### Community 33 - "Design"
 Cohesion: 0.06
@@ -370,16 +374,16 @@ Cohesion: 0.09
 Nodes (22): $type, $value, $type, $value, $type, $value, $type, $value (+14 more)
 
 ### Community 36 - "design_system.py"
-Cohesion: 0.09
-Nodes (12): ansi_ljust(), _detect_page_type(), format_ascii_box(), format_master_md(), format_page_override_md(), _generate_intelligent_overrides(), hex_to_ansi(), persist_design_system() (+4 more)
+Cohesion: 0.07
+Nodes (15): ansi_ljust(), _detect_page_type(), format_ascii_box(), format_markdown(), format_master_md(), format_page_override_md(), generate_design_system(), _generate_intelligent_overrides() (+7 more)
 
-### Community 37 - "icon/generate.py"
-Cohesion: 0.10
+### Community 37 - "re"
+Cohesion: 0.11
 Nodes (13): apply_color(), apply_viewbox_size(), extract_svgs(), generate_batch(), generate_icon(), generate_sizes(), load_env(), main() (+5 more)
 
-### Community 38 - "The Design System Page"
-Cohesion: 0.08
-Nodes (29): ColorPair(), contrast(), luminance(), toHex(), toRgb(), defaultStates, previewState(), StateMatrix() (+21 more)
+### Community 38 - "app/layout.tsx"
+Cohesion: 0.06
+Nodes (37): ColorPair(), contrast(), luminance(), toHex(), toRgb(), defaultStates, previewState(), StateMatrix() (+29 more)
 
 ### Community 39 - "Form & Input Components"
 Cohesion: 0.06
@@ -389,7 +393,7 @@ Nodes (32): Accordion, Alert, Alert Dialog, Avatar, Badge, Button, Card, Checkbo
 Cohesion: 0.06
 Nodes (32): 1. Mobile-First Design, 2. Consistent Breakpoint Usage, 3. Test at Breakpoint Boundaries, 4. Use Container for Content Width, 5. Progressive Enhancement, 6. Avoid Too Many Breakpoints, Best Practices, Breakpoint System (+24 more)
 
-### Community 41 - "json"
+### Community 41 - "fetch-background.py"
 Cohesion: 0.16
 Nodes (9): generate_css_for_background(), get_background_image(), get_curated_images(), get_overlay_css(), get_pexels_search_url(), load_backgrounds_config(), load_brand_colors(), main() (+1 more)
 
@@ -413,13 +417,9 @@ Nodes (12): get_context(), is_allowed_exception(), is_allowed_rgba(), is_inside_
 Cohesion: 0.07
 Nodes (28): Accordion, Alert, ARIA Labels, Checkbox and Radio, Color Contrast, Command Palette Navigation, Component-Specific Patterns, Dialog/Modal Navigation (+20 more)
 
-### Community 47 - "dropdown-menu (Radix `DropdownMenu` → Base UI `Menu`)"
-Cohesion: 0.10
-Nodes (20): Arrow → Menu.Arrow, Base UI only props worth knowing (Menu), CheckboxItem → Menu.CheckboxItem, Content → Menu.Portal > Menu.Positioner > Menu.Popup, CSS variable mapping (per menu flavor: `dropdown-menu` / `context-menu` / `menubar`), Data-attribute mapping (dropdown/context/menubar menus), dropdown-menu (Radix `DropdownMenu` → Base UI `Menu`), Group → Menu.Group (+12 more)
-
-### Community 48 - "cip/generate.py"
-Cohesion: 0.19
-Nodes (7): build_cip_prompt(), check_logo_required(), generate_cip_set(), generate_with_nano_banana(), load_env(), load_logo_image(), main()
+### Community 47 - "render"
+Cohesion: 0.09
+Nodes (38): Base UI only props worth knowing (checkbox), Base UI only props worth knowing (radio-group), Base UI only props worth knowing (select), Base UI only props worth knowing (switch), checkbox, Checkbox.Indicator → Checkbox.Indicator, Checkbox.Root → Checkbox.Root, CSS variable mapping (select) (+30 more)
 
 ### Community 49 - "Asset Approval Checklist"
 Cohesion: 0.08
@@ -429,17 +429,17 @@ Nodes (25): Accessibility, Archival, Asset Approval Checklist, Automation Suppor
 Cohesion: 0.08
 Nodes (25): Common Pitfalls, Core Prompt Structure, Detailed Brief, Eco/Sustainable, Effective Keywords by Style, Fashion Brand, Healthcare, Industry-Specific Prompts (+17 more)
 
-### Community 51 - "teacher-v2.server.ts"
-Cohesion: 0.54
-Nodes (7): contextV2(), createSnapshotV2(), importFeedbackV2(), listSnapshotsV2(), root(), Snapshot, snapshotValue()
+### Community 51 - "commuter-draft.ts"
+Cohesion: 0.19
+Nodes (17): DraftStatus, DraftAccountGuard(), changed(), preflight(), Preflight, accountQueue, activateDeviceAccount(), clearDeviceDrafts() (+9 more)
 
-### Community 52 - "answers.ts"
-Cohesion: 0.11
-Nodes (24): DELETE, GET, PATCH, PUT, Context, DELETE, POST, PUT (+16 more)
+### Community 52 - "home-v2.tsx"
+Cohesion: 0.22
+Nodes (11): Home(), instant, date(), Home, HomeV2(), load(), more(), select() (+3 more)
 
-### Community 53 - "canonicalJson"
-Cohesion: 0.16
-Nodes (16): hash(), getPackV2(), importPackV2(), listPacksV2(), packs(), canonicalJson(), hash(), changeWorkV2() (+8 more)
+### Community 53 - "Button"
+Cohesion: 0.22
+Nodes (11): SignInPage(), SignInForm(), Button(), ImportForm(), clear(), confirm(), HistoryList(), List() (+3 more)
 
 ### Community 54 - "Color Palette Management"
 Cohesion: 0.08
@@ -462,8 +462,8 @@ Cohesion: 0.08
 Nodes (24): Accessibility Patterns, Alternative: Tailwind-Only Setup, Best Practices, Common Patterns, Component Layer: shadcn/ui, Component Library Guide, Component + Styling Setup, Core Stack (+16 more)
 
 ### Community 59 - "test_design_system_mode.py"
-Cohesion: 0.14
-Nodes (6): _filter_anti_patterns_for_mode(), _query_wants_dark(), _resolve_color_mode(), _style_is_dark_primary(), TestAntiPatternGating, TestModeResolution
+Cohesion: 0.13
+Nodes (6): _filter_anti_patterns_for_mode(), _palette_is_dark(), _relative_luminance(), TestAntiPatternGating, TestEndToEndCoherence, TestLuminance
 
 ### Community 60 - "Workflow"
 Cohesion: 0.08
@@ -481,9 +481,9 @@ Nodes (29): Base UI only props worth knowing, Base UI only props worth knowing, 
 Cohesion: 0.09
 Nodes (22): @apply Directive, Best Practices, Color Customization, Complete Tailwind Config, Configuration Examples, Content Configuration, Custom Color Palette, Custom Font Sizes (+14 more)
 
-### Community 64 - "_palette_is_dark"
-Cohesion: 0.18
-Nodes (4): _palette_is_dark(), _relative_luminance(), TestEndToEndCoherence, TestLuminance
+### Community 64 - "TestStyleTaxonomy"
+Cohesion: 0.11
+Nodes (5): _query_wants_dark(), _resolve_color_mode(), _style_is_dark_primary(), TestModeResolution, TestStyleTaxonomy
 
 ### Community 65 - "generate-slide.py"
 Cohesion: 0.13
@@ -497,9 +497,9 @@ Nodes (12): Action → (no primitive), alert-dialog, Base UI only props worth kn
 Cohesion: 0.10
 Nodes (19): Banner Design Tasks, Brand Identity Tasks, Component Creation, Corporate Identity Program Tasks, Design Routing Guide, Design System Migration, Icon Design Tasks, Implementation Tasks (+11 more)
 
-### Community 68 - "request"
-Cohesion: 0.15
-Nodes (19): AttemptPage(), instant, instant, PackPracticePage(), attemptIdPattern, request(), Review(), assess() (+11 more)
+### Community 68 - "attempts.server.ts"
+Cohesion: 0.14
+Nodes (29): DELETE, GET(), PATCH, PUT, completedWindow(), teacherContext(), learnerPack(), LearningPack (+21 more)
 
 ### Community 69 - "shadcn/ui Theming & Customization"
 Cohesion: 0.10
@@ -521,9 +521,9 @@ Nodes (18): 1. Wordmark (Logotype), 2. Lettermark (Monogram), 3. Pictorial Mark 
 Cohesion: 0.11
 Nodes (19): $type, $value, background, foreground, muted-foreground, primary, primary-hover, secondary (+11 more)
 
-### Community 75 - "CommuterDraft"
-Cohesion: 0.08
-Nodes (32): Brand, Brand Sync Workflow, Quick Start, References, Routing, Scripts, Subcommands, Templates (+24 more)
+### Community 75 - "methodNotAllowed"
+Cohesion: 0.25
+Nodes (9): DELETE, PATCH, POST, PUT, DELETE(), PATCH(), POST(), PUT() (+1 more)
 
 ### Community 76 - "Brand Consistency Checklist"
 Cohesion: 0.11
@@ -541,9 +541,9 @@ Nodes (17): Accent, Applying Semantic Tokens, Background & Foreground, Border & 
 Cohesion: 0.08
 Nodes (23): accordion, asChild -> render, breadcrumb / marker (Slot users), Coverage matrix, CSS custom properties, Data attributes / class hooks, dialog / alert-dialog / sheet, Doc-validation TODOs (before specs are final) (+15 more)
 
-### Community 80 - "Button"
-Cohesion: 0.23
-Nodes (12): ImportPage(), instant, SignInPage(), SignInForm(), Button(), buttonVariants, ImportForm(), clear() (+4 more)
+### Community 80 - "getFirebaseAdmin"
+Cohesion: 0.17
+Nodes (21): contextV2(), createSnapshotV2(), hash(), importFeedbackV2(), listSnapshotsV2(), root(), Snapshot, snapshotValue() (+13 more)
 
 ### Community 81 - "Design Principles"
 Cohesion: 0.12
@@ -558,16 +558,16 @@ Cohesion: 0.12
 Nodes (16): $type, $value, $type, $value, $type, $value, $type, $value (+8 more)
 
 ### Community 85 - "manual-learning.tsx"
+Cohesion: 0.11
+Nodes (16): instant, ManualLayout(), Editable, ManualLearning(), call(), confirmLeave(), openWork(), previewRaw() (+8 more)
+
+### Community 86 - "Forms & Inputs"
 Cohesion: 0.13
-Nodes (13): ManualPage(), Editable, ManualLearning(), call(), confirmLeave(), openWork(), previewRaw(), refresh() (+5 more)
+Nodes (19): Buttons inside inputs use InputGroup + InputGroupAddon, Contents, Field validation and disabled states, FieldSet + FieldLegend for grouping related fields, Forms & Inputs, Forms use FieldGroup + Field, InputGroup requires InputGroupInput/InputGroupTextarea, Option sets (2–7 choices) use ToggleGroup (+11 more)
 
-### Community 86 - "methodNotAllowed"
-Cohesion: 0.20
-Nodes (13): DELETE, GET(), PATCH, POST, PUT, DELETE(), GET(), PATCH() (+5 more)
-
-### Community 87 - "argparse"
-Cohesion: 0.16
-Nodes (4): format_brief(), format_results(), main(), format_output()
+### Community 87 - "logo/core.py"
+Cohesion: 0.13
+Nodes (6): BM25, detect_domain(), _load_csv(), search(), search_all(), _search_csv()
 
 ### Community 88 - "extract-colors.cjs"
 Cohesion: 0.20
@@ -637,37 +637,29 @@ Nodes (12): Categories, Dark Mode, File Organization, Layer 1: Primitive Tokens,
 Cohesion: 0.15
 Nodes (12): component, $type, $value, dark, semantic, $schema, $type, $value (+4 more)
 
-### Community 108 - "navigation-menu (Radix `NavigationMenu` → Base UI `NavigationMenu`)"
-Cohesion: 0.08
-Nodes (26): accordion, Accordion.Content → Accordion.Panel, Accordion.Header → Accordion.Header, Accordion.Item → Accordion.Item, Accordion.Root → Accordion.Root, Accordion.Trigger → Accordion.Trigger, Base UI only props worth knowing, CSS var mapping (+18 more)
-
-### Community 109 - "Commands"
-Cohesion: 0.17
-Nodes (12): `add` — Add components, `apply` — Apply a preset to an existing project, `build` — Build a custom registry, Commands, `diff` — Check for updates, `docs` — Get component documentation URLs, Dry-Run Mode, `info` — Project information (+4 more)
+### Community 109 - "CommuterDraft"
+Cohesion: 0.27
+Nodes (4): CommuterDraft, same(), DeviceDraft, EditableWork
 
 ### Community 110 - "Styling & Customization"
 Cohesion: 0.15
 Nodes (13): Built-in variants first, className for layout only, Contents, No manual dark: color overrides, No manual z-index on overlay components, No raw color values for status/state indicators, No space-x-* / space-y-*, Prefer size-* over w-* h-* when equal (+5 more)
 
-### Community 112 - "validate"
-Cohesion: 0.19
-Nodes (11): _check_file(), _check_provenance(), _check_stack_freshness_contract(), main(), _read_rows(), _valid_catalog_source_key(), _valid_confidence(), _valid_dataset_source_key() (+3 more)
+### Community 112 - "navigation-menu (Radix `NavigationMenu` → Base UI `NavigationMenu`)"
+Cohesion: 0.08
+Nodes (26): accordion, Accordion.Content → Accordion.Panel, Accordion.Header → Accordion.Header, Accordion.Item → Accordion.Item, Accordion.Root → Accordion.Root, Accordion.Trigger → Accordion.Trigger, Base UI only props worth knowing, CSS var mapping (+18 more)
 
-### Community 113 - "TestDomainDetection"
-Cohesion: 0.06
-Nodes (4): TestDomainDetection, TestFixtureValidation, TestMetricMath, TestThresholdGate
+### Community 114 - "teacher-schema.ts"
+Cohesion: 0.17
+Nodes (13): CompletedAttempt, count(), Counters, empty(), Grade, summarize(), counter, counters (+5 more)
 
-### Community 114 - "parse_decision_rules"
-Cohesion: 0.24
-Nodes (4): apply_decision_rules(), _object_without_duplicates(), parse_decision_rules(), _validate_action()
-
-### Community 115 - "render-html.py"
-Cohesion: 0.23
-Nodes (4): generate_html(), get_deliverable_info(), get_image_base64(), main()
+### Community 115 - "argparse"
+Cohesion: 0.11
+Nodes (11): build_cip_prompt(), check_logo_required(), generate_cip_set(), generate_with_nano_banana(), load_env(), load_logo_image(), main(), generate_html() (+3 more)
 
 ### Community 116 - "DesignSystemGenerator"
-Cohesion: 0.12
-Nodes (3): DesignSystemGenerator, TestReasoningMatch, TestReasoningContract
+Cohesion: 0.10
+Nodes (4): DesignSystemGenerator, _resolve_dial(), TestReasoningMatch, TestReasoningContract
 
 ### Community 117 - "Primitive Tokens"
 Cohesion: 0.17
@@ -689,13 +681,13 @@ Nodes (12): $type, $value, bg, bg, padding, shadow, card, bg (+4 more)
 Cohesion: 0.17
 Nodes (12): Base UI only props worth knowing (form-wide), CSS variables, Data attributes, form, Form.Control → Field.Control, Form.Field → Field.Root, Form.Label → Field.Label, Form.Message → Field.Error (+4 more)
 
-### Community 122 - "slider"
-Cohesion: 0.12
-Nodes (17): Base UI only props worth knowing, CSS variables, Data attributes, progress, Progress.Indicator → Progress.Indicator, Progress.Root → Progress.Root, Base UI only props worth knowing (slider), Data-attribute mapping (slider) (+9 more)
+### Community 122 - "csv"
+Cohesion: 0.05
+Nodes (8): _rows(), TestNativeDesktopStackFreshness, TestFixtureValidation, TestMetricMath, read_rows(), read_rows(), TestTextLayoutDataContracts, TestTextLayoutRetrieval
 
 ### Community 123 - "Design Systems from DESIGN.md"
-Cohesion: 0.09
-Nodes (22): Contents, Coverage check, Dark mode, Design Systems from DESIGN.md, Elevation, Focus, Fonts, Inputs to Confirm (+14 more)
+Cohesion: 0.15
+Nodes (13): Contents, Coverage check, Design Systems from DESIGN.md, Inputs to Confirm, Known traps, Picking a style, Report Back, Step 1: Scaffold (+5 more)
 
 ### Community 124 - "Tools"
 Cohesion: 0.17
@@ -721,25 +713,29 @@ Nodes (10): Bold Dynamic, CIP Design Style Guide, Classic Traditional, Color Psy
 Cohesion: 0.20
 Nodes (10): fast, normal, slow, $type, $value, $type, $value, duration (+2 more)
 
-### Community 130 - "toast"
+### Community 130 - "Commands"
+Cohesion: 0.17
+Nodes (12): `add` — Add components, `apply` — Apply a preset to an existing project, `build` — Build a custom registry, Commands, `diff` — Check for updates, `docs` — Get component documentation URLs, Dry-Run Mode, `info` — Project information (+4 more)
+
+### Community 131 - "cip/core.py"
 Cohesion: 0.18
-Nodes (11): Base UI only props worth knowing, CSS variables, Data attributes, toast, Toast.Action → Toast.Action, Toast.Close → Toast.Close, Toast.Description → Toast.Description, Toast.Provider → Toast.Provider (+3 more)
+Nodes (6): detect_domain(), get_cip_brief(), _load_csv(), search(), search_all(), _search_csv()
 
-### Community 131 - "test_data_contracts.py"
-Cohesion: 0.25
-Nodes (4): split_values(), style_identities(), TestStyleIdentityContract, _check_reasoning_contract()
+### Community 132 - "field.tsx"
+Cohesion: 0.19
+Nodes (7): System notes and dividers use Marker, Chat & Messaging → [chat.md](./rules/chat.md), @base-ui/react, class-variance-authority, cn, FieldSeparator(), Separator()
 
-### Community 132 - "popover"
+### Community 134 - "popover"
 Cohesion: 0.18
 Nodes (11): Anchor → Positioner `anchor` prop, Arrow → Arrow, Base UI only props worth knowing (popover), Close → Close, Content → Positioner + Popup, CSS variables (popover), Data attributes (popover), popover (+3 more)
 
-### Community 134 - "shadcn/ui"
-Cohesion: 0.18
-Nodes (11): Component Docs, Examples, and Usage, Current Project Context, Design Systems from DESIGN.md, Detailed References, Key Fields, Key Patterns, Principles, Quick Reference (+3 more)
+### Community 135 - "commuter-work.tsx"
+Cohesion: 0.19
+Nodes (9): LearningPackV2, CommuterWork(), labels, Props, RichSegment, RichText(), DraftView, editableWork() (+1 more)
 
-### Community 135 - "test_core.py"
-Cohesion: 0.11
-Nodes (3): TestBm25CoreBehavior, TestDiagnosticsContracts, TestTokenizer
+### Community 136 - "toast"
+Cohesion: 0.18
+Nodes (11): Base UI only props worth knowing, CSS variables, Data attributes, toast, Toast.Action → Toast.Action, Toast.Close → Toast.Close, Toast.Description → Toast.Description, Toast.Provider → Toast.Provider (+3 more)
 
 ### Community 137 - "Quick Reference"
 Cohesion: 0.18
@@ -749,9 +745,9 @@ Nodes (11): 10. Charts & Data (LOW), 1. Accessibility (CRITICAL), 2. Touch & Int
 Cohesion: 0.29
 Nodes (8): adjustBrightness(), { execFileSync }, extractColorsFromMarkdown(), fs, generateColorScale(), main(), path, updateDesignTokens()
 
-### Community 139 - "dialog"
-Cohesion: 0.20
-Nodes (10): Base UI only props worth knowing (dialog), Content → Popup, CSS variables (dialog), Data attributes (dialog), dialog, Overlay → Backdrop, Portal → Portal, Root → Root (+2 more)
+### Community 139 - "Chat & Messaging"
+Cohesion: 0.25
+Nodes (8): Chat & Messaging, Code and tool output use CodeBlock, Contents, Escape hatch: the scroller hooks, Message rows use Message, Message surfaces use Bubble, Scrollable threads use MessageScroller, Streaming, anchoring, and jump-to-latest are built in
 
 ### Community 140 - "Slide Strategies"
 Cohesion: 0.20
@@ -769,10 +765,6 @@ Nodes (9): flattenTokens(), fs, generateCSS(), generateTailwind(), main(), parse
 Cohesion: 0.20
 Nodes (10): fg, font-size, hover-bg, button, $type, $value, $type, $value (+2 more)
 
-### Community 144 - "cip/core.py"
-Cohesion: 0.12
-Nodes (7): BM25, detect_domain(), get_cip_brief(), _load_csv(), search(), search_all(), _search_csv()
-
 ### Community 145 - "Target wrapper shapes (golden-derived specifics)"
 Cohesion: 0.20
 Nodes (9): Accordion animation placement, Button, Conventions, DropdownMenu / ContextMenu SubContent, Select, SubTrigger open styling, Tabs, Target wrapper shapes (golden-derived specifics) (+1 more)
@@ -781,9 +773,9 @@ Nodes (9): Accordion animation placement, Button, Conventions, DropdownMenu / Co
 Cohesion: 0.20
 Nodes (9): Common Structures, Duarte Sparkline Pattern, Matching Strategy to Context, Product Demo (6 slides), Sales Pitch (9 slides), Search Commands, Slide Strategies, Strategy Selection (+1 more)
 
-### Community 149 - "scroll-area"
+### Community 149 - "_select_palette_for_mode"
 Cohesion: 0.22
-Nodes (9): Base UI only props worth knowing, CSS variables, Data attributes, scroll-area, ScrollArea.Corner → ScrollArea.Corner, ScrollArea.Root → ScrollArea.Root, ScrollArea.Viewport → ScrollArea.Viewport, ScrollAreaScrollbar → ScrollArea.Scrollbar (+1 more)
+Nodes (4): _contrast_ratio(), _derive_dark_palette(), _select_palette_for_mode(), TestPaletteSelection
 
 ### Community 150 - "Registry Authoring and Addresses"
 Cohesion: 0.22
@@ -797,29 +789,37 @@ Nodes (8): padding-x, input, $type, $value, focus-ring, padding-x, $type, $value
 Cohesion: 0.19
 Nodes (14): $type, $value, $type, $value, $type, $value, primitive, radius (+6 more)
 
-### Community 153 - "_select_palette_for_mode"
+### Community 153 - "tooltip"
+Cohesion: 0.10
+Nodes (20): Arrow → Arrow, Arrow → Arrow, Base UI only props worth knowing (preview-card), Base UI only props worth knowing (tooltip), Content → Positioner + Popup, Content → Positioner + Popup, CSS variables (preview-card), CSS variables (tooltip) (+12 more)
+
+### Community 154 - "Brand"
+Cohesion: 0.20
+Nodes (9): Brand, Brand Sync Workflow, Quick Start, References, Routing, Scripts, Subcommands, Templates (+1 more)
+
+### Community 155 - "scroll-area"
 Cohesion: 0.22
-Nodes (4): _contrast_ratio(), _derive_dark_palette(), _select_palette_for_mode(), TestPaletteSelection
+Nodes (9): Base UI only props worth knowing, CSS variables, Data attributes, scroll-area, ScrollArea.Corner → ScrollArea.Corner, ScrollArea.Root → ScrollArea.Root, ScrollArea.Viewport → ScrollArea.Viewport, ScrollAreaScrollbar → ScrollArea.Scrollbar (+1 more)
 
 ### Community 156 - "Base vs Radix"
 Cohesion: 0.25
 Nodes (8): Accordion, Base vs Radix, Button / trigger as non-button element (base only), Contents, Select, Select — multiple selection and object values (base only), Slider, ToggleGroup
 
-### Community 159 - "tooltip"
-Cohesion: 0.10
-Nodes (20): Arrow → Arrow, Arrow → Arrow, Base UI only props worth knowing (preview-card), Base UI only props worth knowing (tooltip), Content → Positioner + Popup, Content → Positioner + Popup, CSS variables (preview-card), CSS variables (tooltip) (+12 more)
+### Community 159 - "test_data_contracts.py"
+Cohesion: 0.14
+Nodes (6): read_rows(), split_values(), style_identities(), TestGeneratedCatalogContract, TestLandingAndStackContract, TestStyleIdentityContract
 
-### Community 160 - "test_text_layout_resilience.py"
-Cohesion: 0.18
-Nodes (3): read_rows(), TestTextLayoutDataContracts, TestTextLayoutRetrieval
+### Community 160 - "dialog"
+Cohesion: 0.20
+Nodes (10): Base UI only props worth knowing (dialog), Content → Popup, CSS variables (dialog), Data attributes (dialog), dialog, Overlay → Backdrop, Portal → Portal, Root → Root (+2 more)
 
 ### Community 161 - "ui-ux-pro-max"
 Cohesion: 0.25
 Nodes (7): How to Use, Primary Use Cases, Recommended, Rule Categories by Priority, Skip, ui-ux-pro-max, When to Apply
 
-### Community 162 - "Chat & Messaging"
+### Community 162 - "slider"
 Cohesion: 0.12
-Nodes (17): Chat & Messaging, Code and tool output use CodeBlock, Contents, Escape hatch: the scroller hooks, Message rows use Message, Message surfaces use Bubble, Scrollable threads use MessageScroller, Streaming, anchoring, and jump-to-latest are built in (+9 more)
+Nodes (17): Base UI only props worth knowing, CSS variables, Data attributes, progress, Progress.Indicator → Progress.Indicator, Progress.Root → Progress.Root, Base UI only props worth knowing (slider), Data-attribute mapping (slider) (+9 more)
 
 ### Community 163 - "Slides Reference"
 Cohesion: 0.29
@@ -832,6 +832,10 @@ Nodes (6): Animation Classes, Background Images, Base Structure, Chart.js Integr
 ### Community 165 - "Class-string rewrites (layer 2)"
 Cohesion: 0.29
 Nodes (6): Animation idiom, Class-string rewrites (layer 2), CSS variables, Data-attribute selectors, Disabled-state hooks, Element changes kill pseudo-class variants
+
+### Community 166 - "load-env.cjs"
+Cohesion: 0.29
+Nodes (6): fs, loadedFiles, loadEnvConfig(), modulePath, nextEnv, rememberFileKeys()
 
 ### Community 167 - "context-menu (Radix `ContextMenu` → Base UI `ContextMenu`)"
 Cohesion: 0.13
@@ -849,9 +853,9 @@ Nodes (8): Base UI only props worth knowing, CSS var mapping, Data-attribute map
 Cohesion: 0.29
 Nodes (6): Animation Classes, Background Images, Base Structure, Chart.js Integration, CSS Variables Reference, HTML Slide Template
 
-### Community 172 - "next"
-Cohesion: 0.24
-Nodes (6): nextConfig, next, LearnerLayout(), metadata, RootLayout(), AuthBoundary()
+### Community 172 - "cip/search.py"
+Cohesion: 0.32
+Nodes (3): format_brief(), format_results(), main()
 
 ### Community 173 - "Query Contract"
 Cohesion: 0.29
@@ -868,10 +872,6 @@ Nodes (5): Callback signature rule, Consumer-side prop changes (call sites, not 
 ### Community 176 - "Slides"
 Cohesion: 0.33
 Nodes (5): References (Knowledge Base), Routing, Slides, Subcommands, When to Use
-
-### Community 177 - "schema.ts"
-Cohesion: 0.09
-Nodes (22): DELETE, GET, PATCH, PUT, DELETE, GET(), PATCH, POST (+14 more)
 
 ### Community 178 - "Pre-Delivery Checklist"
 Cohesion: 0.33
@@ -897,13 +897,13 @@ Nodes (5): radius, radius, radius, $type, $value
 Cohesion: 0.60
 Nodes (5): lg, $type, $value, lg, lg
 
-### Community 184 - "home-v2.tsx"
-Cohesion: 0.24
-Nodes (10): Home(), instant, date(), Home, HomeV2(), load(), more(), Pack (+2 more)
+### Community 184 - "request"
+Cohesion: 0.14
+Nodes (21): Context, Report(), copy(), download(), load(), request(), Review(), assess() (+13 more)
 
-### Community 185 - "read_rows"
-Cohesion: 0.19
-Nodes (3): read_rows(), TestGeneratedCatalogContract, TestLandingAndStackContract
+### Community 185 - "showcase-coverage.mjs"
+Cohesion: 0.29
+Nodes (6): components, missing, source, [uiArg, ...roots], uiDir, walk()
 
 ### Community 186 - "Common Rules for Professional UI"
 Cohesion: 0.40
@@ -921,17 +921,13 @@ Nodes (4): padding-y, padding-y, $type, $value
 Cohesion: 0.67
 Nodes (4): xl, xl, $type, $value
 
-### Community 190 - "lists.tsx"
-Cohesion: 0.33
-Nodes (7): HistoryPage(), instant, instant, PracticePage(), HistoryList(), List(), PracticeList()
-
 ### Community 191 - "none"
 Cohesion: 0.67
 Nodes (4): $type, $value, none, none
 
-### Community 192 - "generate_design_system"
-Cohesion: 0.29
-Nodes (3): format_markdown(), generate_design_system(), TestPersistence
+### Community 192 - "shadcn CLI Reference"
+Cohesion: 0.40
+Nodes (5): Contents, Presets, shadcn CLI Reference, Switching Presets, Templates
 
 ### Community 193 - "Tips for Better Results"
 Cohesion: 0.50
@@ -961,14 +957,6 @@ Nodes (3): ring, $type, $value
 Cohesion: 0.67
 Nodes (3): secondary-foreground, $type, $value
 
-### Community 202 - "api/packs/route.ts"
-Cohesion: 0.32
-Nodes (7): DELETE, GET(), PATCH, POST, PUT, listPacks(), parseCursor()
-
-### Community 203 - "shadcn CLI Reference"
-Cohesion: 0.40
-Nodes (5): Contents, Presets, shadcn CLI Reference, Switching Presets, Templates
-
 ### Community 205 - "16"
 Cohesion: 0.67
 Nodes (3): $type, $value, 16
@@ -985,25 +973,41 @@ Nodes (3): $type, $value, 3
 Cohesion: 0.67
 Nodes (3): $type, $value, 8
 
+### Community 212 - "client.tsx"
+Cohesion: 0.14
+Nodes (19): Select.Root → Select.Root, react-dom, AuthContext, AuthState, getFirebaseAuth(), initializeAuth(), ConfigurationError, Environment (+11 more)
+
+### Community 214 - "Icons"
+Cohesion: 0.40
+Nodes (4): Icons, Icons in Button use data-icon attribute, No sizing classes on icons inside components, Pass icons as component objects, not string keys
+
+### Community 215 - "Step 4: Map Tokens to the Theme"
+Cohesion: 0.25
+Nodes (8): Dark mode, Elevation, Focus, Fonts, Radius, Role mapping, Step 4: Map Tokens to the Theme, Type scale
+
+### Community 219 - "next"
+Cohesion: 0.09
+Nodes (9): nextConfig, next, instant, instant, instant, instant, instant, instant (+1 more)
+
 ## Knowledge Gaps
 - **19 isolated node(s):** `tw-animate-css`, `@tailwindcss/turbopack`, `@types/node`, `@types/react`, `@types/react-dom` (+14 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1899 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **26 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1939 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **35 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `render()` connect `render` to `toast`, `popover`, `dropdown-menu.tsx`, `dialog`, `client.tsx`, `Target wrapper shapes (golden-derived specifics)`, `scroll-area`, `Base vs Radix`, `tooltip`, `Chat & Messaging`, `context-menu (Radix `ContextMenu` → Base UI `ContextMenu`)`, `tabs`, `Consumer-side prop changes (call sites, not wrappers)`, `dropdown-menu (Radix `DropdownMenu` → Base UI `Menu`)`, `display-misc.md`, `toolbar`, `alert-dialog`, `Per-component notes`, `navigation-menu (Radix `NavigationMenu` → Base UI `NavigationMenu`)`, `form`, `slider`, `Design Systems from DESIGN.md`?**
-  _High betweenness centrality (0.214) - this node is a cross-community bridge._
+- **Why does `render()` connect `render` to `react`, `popover`, `toast`, `Chat & Messaging`, `Target wrapper shapes (golden-derived specifics)`, `tooltip`, `dropdown-menu (Radix `DropdownMenu` → Base UI `Menu`)`, `scroll-area`, `Base vs Radix`, `dialog`, `slider`, `context-menu (Radix `ContextMenu` → Base UI `ContextMenu`)`, `tabs`, `Consumer-side prop changes (call sites, not wrappers)`, `display-misc.md`, `toolbar`, `alert-dialog`, `Per-component notes`, `client.tsx`, `navigation-menu (Radix `NavigationMenu` → Base UI `NavigationMenu`)`, `form`, `Design Systems from DESIGN.md`?**
+  _High betweenness centrality (0.206) - this node is a cross-community bridge._
 - **Are the 133 inferred relationships involving `render()` (e.g. with `Universal` and `Accordion.Content → Accordion.Panel`) actually correct?**
   _`render()` has 133 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `tw-animate-css`, `@tailwindcss/turbopack`, `@types/node` to the rest of the system?**
   _19 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `withAuthenticatedUser` be split into smaller, more focused modules?**
-  _Cohesion score 0.14078374455732948 - nodes in this community are weakly interconnected._
-- **Why does `validate()` connect `validate` to `form`, `test_data_contracts.py`, `validate_data.py`?**
-  _High betweenness centrality (0.176) - this node is a cross-community bridge._
+  _Cohesion score 0.1005260081823495 - nodes in this community are weakly interconnected._
+- **Why does `validate()` connect `validate_data.py` to `form`, `parse_decision_rules`, `re`?**
+  _High betweenness centrality (0.169) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `TailwindConfigGenerator` (e.g. with `TestGeneratedConfigIsValidJs` and `TestTailwindConfigGenerator`) actually correct?**
   _`TailwindConfigGenerator` has 2 INFERRED edges - model-reasoned connections that need verification._
-- **Should `schema-v2.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.08583959899749373 - nodes in this community are weakly interconnected._
+- **Should `teacher-schema-v2.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.112375533428165 - nodes in this community are weakly interconnected._
