@@ -1,7 +1,7 @@
 # Graph Report - japanese-learning  (2026-11-11)
 
 ## Corpus Check
-- 284 files · ~327,213 words
+- 284 files · ~327,460 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 62 file(s) not represented in the graph (top: .csv 53, (none) 4, .css 2)
 
@@ -960,7 +960,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `withAuthenticatedUser` be split into smaller, more focused modules?**
   _Cohesion score 0.10912698412698413 - nodes in this community are weakly interconnected._
 - **Why does `validate()` connect `validate_data.py` to `form`, `re`?**
-  _High betweenness centrality (0.173) - this node is a cross-community bridge._
+  _High betweenness centrality (0.174) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `TailwindConfigGenerator` (e.g. with `TestGeneratedConfigIsValidJs` and `TestTailwindConfigGenerator`) actually correct?**
   _`TailwindConfigGenerator` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **Should `teacher-schema-v2.ts` be split into smaller, more focused modules?**

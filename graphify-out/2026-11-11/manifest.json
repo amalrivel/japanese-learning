@@ -354,9 +354,9 @@
     "semantic_hash": "c4571b17bd483752a86f68b5ce2199a3"
   },
   "tests/browser/practice.spec.ts": {
-    "mtime": 1794381462.7294147,
-    "seen": 1794381509.1490383,
-    "ast_hash": "fc084f525c148332a97e4d8ef4907677",
+    "mtime": 1794381908.5616186,
+    "seen": 1794381935.825514,
+    "ast_hash": "340954280bdb8ab37781b9409ec372bc",
     "semantic_hash": ""
   },
   "tests/helpers/emulator.ts": {
@@ -1590,9 +1590,9 @@
     "semantic_hash": ""
   },
   "src/features/practice/components/commuter-work.tsx": {
-    "mtime": 1794381372.1234858,
-    "seen": 1794381438.720106,
-    "ast_hash": "429f7e34e3bcef8a67e39607bf4e9faa",
+    "mtime": 1794381908.5126183,
+    "seen": 1794381935.825492,
+    "ast_hash": "46af88827076cc7cc2fd9b9061802fd5",
     "semantic_hash": ""
   },
   "src/features/practice/components/lists.tsx": {
@@ -1602,9 +1602,9 @@
     "semantic_hash": ""
   },
   "src/features/practice/components/manual-learning.tsx": {
-    "mtime": 1794381372.200025,
-    "seen": 1794381438.7201092,
-    "ast_hash": "f3175106ba30fb05f2bcbad2760f5297",
+    "mtime": 1794381909.1476212,
+    "seen": 1794381935.8254945,
+    "ast_hash": "fd36b809929e613570045b2f2ec9ac71",
     "semantic_hash": ""
   },
   "src/features/practice/components/review.tsx": {
@@ -1620,9 +1620,9 @@
     "semantic_hash": ""
   },
   "src/features/practice/drafts/commuter-draft.ts": {
-    "mtime": 1794374044.1692467,
-    "seen": 1794374405.4212208,
-    "ast_hash": "6697650703186adee9fdb100bd64f0f2",
+    "mtime": 1794381908.4586182,
+    "seen": 1794381935.8254979,
+    "ast_hash": "6d76190d7a83273710b394abf1d30b20",
     "semantic_hash": ""
   },
   "src/features/practice/drafts/draft-account-guard.tsx": {
@@ -1698,9 +1698,9 @@
     "semantic_hash": ""
   },
   "docs/STYLE_GUIDE.md": {
-    "mtime": 1794381403.3236022,
-    "seen": 1794381438.7202656,
-    "ast_hash": "5eeb74f6bbf09499514c4e549dca1614",
+    "mtime": 1794381927.1187027,
+    "seen": 1794381935.8256001,
+    "ast_hash": "9df4fa1755d468b78b720f45f4490c00",
     "semantic_hash": ""
   },
   "src/app/not-found.tsx": {

@@ -38,6 +38,10 @@ export function ManualLearning() {
   const pathname = usePathname();
   const router = useRouter();
   const queryString = useSearchParams().toString();
+  const navigation = useRef(0);
+  useEffect(() => {
+    navigation.current++;
+  }, [pathname, queryString]);
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
@@ -281,21 +285,9 @@ export function ManualLearning() {
     }
     setPreview(result.data);
   }
-  async function openWork(id: string, confirmed = false) {
-    if (work?.id === id) {
-      router.push(`/manual/study?work=${encodeURIComponent(id)}`);
-      return;
-    }
-    if (!confirmed && !confirmLeave()) return;
-    const result = await call<{ work: LearningWorkV2; pack: LearningPackV2; reviewed?: boolean }>(
-      `/api/v2/works/${id}`,
-    );
-    setWork(result.work);
-    setReviewed(Boolean(result.reviewed));
-    setPack(result.pack);
+  function openWork(id: string, confirmed = false) {
+    if (work?.id !== id && !confirmed && !confirmLeave()) return;
     router.push(`/manual/study?work=${encodeURIComponent(id)}`);
-    setDraft(editable(result.work));
-    setDraftView(null);
   }
   const inputClass = "w-full rounded-md border bg-background p-2 text-base";
   const parent =
@@ -435,6 +427,7 @@ export function ManualLearning() {
             disabled={busy}
             onClick={() =>
               void run(async () => {
+                const startedFrom = navigation.current;
                 const id = (startIds.current[pack.id] ??= crypto.randomUUID());
                 const started = await call<LearningWorkV2>("/api/v2/works", {
                   method: "POST",
@@ -442,7 +435,7 @@ export function ManualLearning() {
                   body: JSON.stringify({ workId: id, packId: pack.id }),
                 });
                 delete startIds.current[pack.id];
-                await openWork(started.id, true);
+                if (startedFrom === navigation.current) openWork(started.id, true);
                 await refresh();
               })
             }
@@ -686,11 +679,7 @@ export function ManualLearning() {
                     ? "Sedang dikerjakan"
                     : "Selesai sementara · dapat direvisi"}
               </span>
-              <Button
-                variant="outline"
-                disabled={busy}
-                onClick={() => void run(() => openWork(item.id))}
-              >
+              <Button variant="outline" disabled={busy} onClick={() => openWork(item.id)}>
                 Buka
               </Button>
             </div>

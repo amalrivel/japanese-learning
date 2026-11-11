@@ -33,6 +33,54 @@ async function packReviewed(
   return feedback.some((doc) => doc.get("feedback.mode") === "assessment");
 }
 
+async function canonicalWork(
+  user: FirebaseFirestore.DocumentReference,
+  pack: FirebaseFirestore.DocumentSnapshot,
+  tx?: FirebaseFirestore.Transaction,
+) {
+  const id = pack.get("workId") as string | undefined;
+  if (id) {
+    const ref = user.collection("learningWorks").doc(id);
+    const doc = tx ? await tx.get(ref) : await ref.get();
+    if (doc.exists) {
+      const work = learningWorkV2Schema.parse(doc.get("work"));
+      if (work.packId !== pack.id) throw new Error("Invalid canonical work reference");
+      return work;
+    }
+  }
+  const query = user.collection("learningWorks").where("work.packId", "==", pack.id);
+  const candidates = tx ? await tx.get(query) : await query.get();
+  return candidates.docs
+    .map((doc) => learningWorkV2Schema.parse(doc.get("work")))
+    .sort(compareWorks)[0];
+}
+
+export async function latestWorkV2(uid: string) {
+  const user = root(uid);
+  const query = user
+    .collection("learningWorks")
+    .where("work.status", "==", "in_progress")
+    .orderBy("work.updatedAt", "desc")
+    .orderBy(FieldPath.documentId(), "desc");
+  let cursor: FirebaseFirestore.QueryDocumentSnapshot | undefined;
+  const canonicalIds = new Map<string, string | undefined>();
+  while (true) {
+    const page = await (cursor ? query.startAfter(cursor) : query).limit(50).get();
+    for (const doc of page.docs) {
+      const work = learningWorkV2Schema.parse(doc.get("work"));
+      if (!canonicalIds.has(work.packId)) {
+        const pack = await user.collection("learningPacks").doc(work.packId).get();
+        const selected = pack.exists ? await canonicalWork(user, pack) : undefined;
+        canonicalIds.set(work.packId, selected?.id);
+      }
+      // A canonical work may be older than this page's hidden duplicate.
+      if (canonicalIds.get(work.packId) === work.id) return work;
+    }
+    if (page.size < 50) return null;
+    cursor = page.docs.at(-1);
+  }
+}
+
 export async function startWorkV2(uid: string, workId: string, packId: string) {
   const user = root(uid);
   const ref = user.collection("learningWorks").doc(workId);
@@ -45,27 +93,10 @@ export async function startWorkV2(uid: string, workId: string, packId: string) {
       if (work.packId !== packId) return { result: "conflict" as const };
     }
     if (!pack.exists) return { result: "not_found" as const };
-    const canonicalId = pack.get("workId") as string | undefined;
-    if (canonicalId) {
-      const canonical = await tx.get(user.collection("learningWorks").doc(canonicalId));
-      if (canonical.exists) {
-        const work = learningWorkV2Schema.parse(canonical.get("work"));
-        if (work.packId !== packId) throw new Error("Invalid canonical work reference");
-        return {
-          result: "existing" as const,
-          work,
-        };
-      }
-    }
-    const previous = await tx.get(
-      user.collection("learningWorks").where("work.packId", "==", packId),
-    );
-    if (!previous.empty) {
-      const work = previous.docs
-        .map((doc) => learningWorkV2Schema.parse(doc.get("work")))
-        .sort(compareWorks)[0];
-      tx.update(packRef, { workId: work.id });
-      return { result: "existing" as const, work };
+    const previous = await canonicalWork(user, pack, tx);
+    if (previous) {
+      if (pack.get("workId") !== previous.id) tx.update(packRef, { workId: previous.id });
+      return { result: "existing" as const, work: previous };
     }
     const work: LearningWorkV2 = {
       schemaVersion: 2,
@@ -113,16 +144,8 @@ export async function listWorksV2(uid: string, limit: number, cursor: string | n
   const canonical = new Map<string, { id: string; title: string; reviewed: boolean }>();
   for (const pack of packDocs) {
     if (!pack.exists) continue;
-    let id = pack.get("workId") as string | undefined;
-    if (!id) {
-      const candidates = await user
-        .collection("learningWorks")
-        .where("work.packId", "==", pack.id)
-        .get();
-      id = candidates.docs
-        .map((doc) => learningWorkV2Schema.parse(doc.get("work")))
-        .sort(compareWorks)[0]?.id;
-    }
+    const selected = await canonicalWork(user, pack);
+    const id = selected?.id;
     if (id)
       canonical.set(pack.id, {
         id,

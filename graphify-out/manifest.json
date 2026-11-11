@@ -198,9 +198,9 @@
     "semantic_hash": ""
   },
   "docs/ARCHITECTURE.md": {
-    "mtime": 1794374432.4713645,
-    "seen": 1794374642.3814178,
-    "ast_hash": "dd5b718ac8a6fbf27886dc81ae196636",
+    "mtime": 1794390933.235915,
+    "seen": 1794391015.3243668,
+    "ast_hash": "808ddcd2ea9ee33f8d5c87cec0333c93",
     "semantic_hash": ""
   },
   "docs/CONTENT_CONTRACT.md": {
@@ -354,9 +354,9 @@
     "semantic_hash": "c4571b17bd483752a86f68b5ce2199a3"
   },
   "tests/browser/practice.spec.ts": {
-    "mtime": 1794381908.5616186,
-    "seen": 1794381935.825514,
-    "ast_hash": "340954280bdb8ab37781b9409ec372bc",
+    "mtime": 1794390933.095277,
+    "seen": 1794391015.324284,
+    "ast_hash": "4c9492c21cf8a0d55d24ed6275601b0f",
     "semantic_hash": ""
   },
   "tests/helpers/emulator.ts": {
@@ -366,9 +366,9 @@
     "semantic_hash": "8f6a1926740a8b1cbbd28e8b95ad91c0"
   },
   "tests/integration/auth-api.test.ts": {
-    "mtime": 1794374523.3829973,
-    "seen": 1794374642.3813,
-    "ast_hash": "a12f5f137d86970144b563718382fd12",
+    "mtime": 1794391035.825645,
+    "seen": 1794391108.8928158,
+    "ast_hash": "77ee1d8a4a1b86013125a0005d0bf05f",
     "semantic_hash": ""
   },
   "tests/rules/firestore-rules.test.ts": {
@@ -1434,9 +1434,9 @@
     "semantic_hash": ""
   },
   "src/app/api/v2/home/route.ts": {
-    "mtime": 1794344087.796846,
-    "seen": 1794344127.6115575,
-    "ast_hash": "ca9687ff1f7e1b9cc4798f7420c3f503",
+    "mtime": 1794390734.621868,
+    "seen": 1794391015.3242283,
+    "ast_hash": "e409c92dfdac257186b226e6c90dbd48",
     "semantic_hash": ""
   },
   "src/app/api/v2/progress/route.ts": {
@@ -1602,9 +1602,9 @@
     "semantic_hash": ""
   },
   "src/features/practice/components/manual-learning.tsx": {
-    "mtime": 1794381909.1476212,
-    "seen": 1794381935.8254945,
-    "ast_hash": "fd36b809929e613570045b2f2ec9ac71",
+    "mtime": 1794390908.2457738,
+    "seen": 1794391015.3242652,
+    "ast_hash": "9170b4f117414ee7875f274b7e23e8fa",
     "semantic_hash": ""
   },
   "src/features/practice/components/review.tsx": {
@@ -1680,9 +1680,9 @@
     "semantic_hash": ""
   },
   "src/features/practice/server/work-v2.server.ts": {
-    "mtime": 1794374337.3741767,
-    "seen": 1794374405.4212432,
-    "ast_hash": "2fb5a25cf89b33a2b28b9a6f5206f38b",
+    "mtime": 1794390781.9840598,
+    "seen": 1794391015.3242779,
+    "ast_hash": "53d864d7035afa6c385787705334d79c",
     "semantic_hash": ""
   },
   "src/features/README.md": {

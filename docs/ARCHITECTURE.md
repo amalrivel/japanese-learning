@@ -129,6 +129,12 @@ Transaksi start membaca dan memperbarui dokumen paket sehingga klik ganda atau d
 tab mengembalikan pekerjaan yang sama. Duplikat historis tidak dihapus; daftar
 memilih pekerjaan berjawaban paling lengkap, lalu terbaru, sebelum pointer tersedia.
 Daftar menampilkan judul paket, bukan ID teknis.
+Beranda memakai pemilih pekerjaan utama yang sama dan melewati duplikat, termasuk
+lintas halaman hasil, saat mencari pekerjaan `in_progress` terbaru. Pekerjaan utama
+yang sudah submitted tidak digantikan oleh duplikat aktif yang tersembunyi.
+Tindakan Buka hanya mengubah URL; pemuatan editor mengikuti URL dan mengabaikan
+respons setelah navigasi berubah. Respons start juga tidak membuka editor jika
+pengguna sudah berpindah halaman; pekerjaan yang berhasil dibuat tetap tersimpan.
 
 Submit boleh parsial dan tidak menilai. Pekerjaan submitted bisa dibuka kembali
 melalui `POST /api/v2/works/{workId}` dengan operation ID dan revisi yang diharapkan.

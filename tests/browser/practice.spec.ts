@@ -2432,3 +2432,94 @@ test("answer autosave preserves question position, focus and DOM", async ({ page
   await expect(radio).toBeChecked();
   expect(await original!.evaluate((element) => element.isConnected)).toBe(true);
 });
+
+test("a delayed open cannot override later navigation", async ({ page }) => {
+  await signIn(page, "A");
+  const pack = JSON.parse(readFileSync("examples/learning-pack.v2.json", "utf8"));
+  const work = JSON.parse(readFileSync("examples/learning-work.v2.json", "utf8"));
+  pack.id = "delayed-open-pack";
+  work.packId = pack.id;
+  work.id = crypto.randomUUID();
+  const user = getFirestore(app).collection("users").doc(users[0]);
+  await user.collection("learningPacks").doc(pack.id).set({ pack, workId: work.id });
+  await user.collection("learningWorks").doc(work.id).set({ work });
+  await page.goto(`${origin}/manual/works`);
+  let release!: () => void;
+  let requested!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const seen = new Promise<void>((resolve) => {
+    requested = resolve;
+  });
+  await page.route(`**/api/v2/works/${work.id}`, async (route) => {
+    requested();
+    await held;
+    await route.continue();
+  });
+  const completed = page.waitForResponse((response) =>
+    response.url().endsWith(`/api/v2/works/${work.id}`),
+  );
+  await page
+    .getByText(new RegExp(`${pack.title} · revisi`))
+    .locator("..")
+    .getByRole("button", { name: "Buka", exact: true })
+    .click();
+  await seen;
+  await goManual(page, "materials");
+  release();
+  await (await completed).finished();
+  await expect(
+    page.getByRole("button", { name: "Baca materi", exact: true }).first(),
+  ).toBeEnabled();
+  await expect(page).toHaveURL(`${origin}/manual/materials`);
+  await expect(page.getByRole("heading", { name: "Materi belajar", level: 1 })).toBeVisible();
+  await goManual(page, "works");
+  await expect(
+    page.getByRole("link", { name: "Lanjutkan latihan aktif", exact: true }),
+  ).toHaveCount(0);
+});
+
+test("a delayed start preserves the new page and the created work", async ({ page }) => {
+  await signIn(page, "A");
+  const pack = JSON.parse(readFileSync("examples/learning-pack.v2.json", "utf8"));
+  pack.id = "delayed-start-pack";
+  const user = getFirestore(app).collection("users").doc(users[0]);
+  await user.collection("learningPacks").doc(pack.id).set({ pack });
+  await page.goto(`${origin}/manual/study?pack=${pack.id}`);
+  let release!: () => void;
+  let requested!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const seen = new Promise<void>((resolve) => {
+    requested = resolve;
+  });
+  await page.route("**/api/v2/works", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    const response = await route.fetch();
+    requested();
+    await held;
+    await route.fulfill({ response });
+  });
+  const completed = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/v2/works") && response.request().method() === "POST",
+  );
+  await page.getByRole("button", { name: "Mulai pekerjaan", exact: true }).click();
+  await seen;
+  await goManual(page, "materials");
+  release();
+  await (await completed).finished();
+  await expect(
+    page.getByRole("button", { name: "Baca materi", exact: true }).first(),
+  ).toBeEnabled();
+  await expect(page).toHaveURL(`${origin}/manual/materials`);
+  await goManual(page, "works");
+  await expect(
+    page.getByRole("link", { name: "Lanjutkan latihan aktif", exact: true }),
+  ).toHaveCount(0);
+  expect(
+    (await user.collection("learningWorks").where("work.packId", "==", pack.id).get()).size,
+  ).toBe(1);
+});

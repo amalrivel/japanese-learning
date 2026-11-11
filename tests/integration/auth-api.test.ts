@@ -1644,6 +1644,12 @@ describe("authenticated API boundary", () => {
     await user.collection("learningPacks").doc(pack.id).set({ pack });
     await user.collection("learningWorks").doc(filled.id).set({ work: filled });
     await user.collection("learningWorks").doc(empty.id).set({ work: empty });
+    const duplicates = db.batch();
+    for (let i = 0; i < 51; i++) {
+      const id = `44444444-4444-4444-8444-${String(i).padStart(12, "0")}`;
+      duplicates.set(user.collection("learningWorks").doc(id), { work: { ...empty, id } });
+    }
+    await duplicates.commit();
     const headers = { Authorization: `Bearer ${tokens[0]}`, "Content-Type": "application/json" };
     const listed = await (
       await fetch("http://127.0.0.1:3100/api/v2/works?limit=50", { headers })
@@ -1651,6 +1657,10 @@ describe("authenticated API boundary", () => {
     expect(listed.items).toHaveLength(1);
     expect(listed.items[0].id).toBe(filled.id);
     expect(listed.items[0].packTitle).toBe(pack.title);
+    const home = () =>
+      fetch("http://127.0.0.1:3100/api/v2/home", { headers }).then((r) => r.json());
+    expect((await home()).work.id).toBe(filled.id);
+
     const resumed = await (
       await fetch("http://127.0.0.1:3100/api/v2/works", {
         method: "POST",
@@ -1659,7 +1669,21 @@ describe("authenticated API boundary", () => {
       })
     ).json();
     expect(resumed.id).toBe(filled.id);
-    expect((await user.collection("learningWorks").get()).size).toBe(2);
+    expect((await home()).work.id).toBe(filled.id);
+    await user.collection("learningWorks").doc(filled.id).update({ "work.status": "submitted" });
+    expect((await home()).work).toBeNull();
+    const otherPack = { ...pack, id: "other-canonical-package" };
+    const otherWork = { ...filled, id: crypto.randomUUID(), packId: otherPack.id };
+    await user
+      .collection("learningPacks")
+      .doc(otherPack.id)
+      .set({ pack: otherPack, workId: otherWork.id });
+    await user.collection("learningWorks").doc(otherWork.id).set({ work: otherWork });
+    expect((await home()).work.id).toBe(otherWork.id);
+    await user.collection("learningPacks").doc(pack.id).update({ workId: empty.id });
+    expect((await home()).work.id).toBe(empty.id);
+
+    expect((await user.collection("learningWorks").get()).size).toBe(54);
     expect(
       (await user.collection("learningWorks").doc(filled.id).get()).get("work.answers"),
     ).toEqual(filled.answers);
@@ -1675,7 +1699,7 @@ describe("authenticated API boundary", () => {
     const snapshotId = feedback.target.snapshotId;
     const snapshot = { id: snapshotId, pack, work };
     const batch = db.batch();
-    batch.set(root.collection("learningPacks").doc(pack.id), { pack });
+    batch.set(root.collection("learningPacks").doc(pack.id), { pack, workId: work.id });
     batch.set(root.collection("teacherSnapshots").doc(snapshotId), {
       snapshot,
       feedbackIds: [feedback.id],

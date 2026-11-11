@@ -1,6 +1,5 @@
-import { FieldPath } from "firebase-admin/firestore";
 import { selectionSchema } from "@/features/analytics/server/progress-v2.server";
-import { learningWorkV2Schema } from "@/features/practice/model/work-schema-v2";
+import { latestWorkV2 } from "@/features/practice/server/work-v2.server";
 import { learningPackV2Schema } from "@/features/content/model/schema-v2";
 import { getFirebaseAdmin } from "@/lib/firebase/admin";
 import { apiError, apiJson, readJson, withAuthenticatedUser } from "@/lib/api/server";
@@ -9,20 +8,14 @@ export function GET(request: Request) {
     const root = getFirebaseAdmin().firestore.collection("users").doc(uid);
     const [settings, pending] = await Promise.all([
       root.collection("settings").doc("learning").get(),
-      root
-        .collection("learningWorks")
-        .where("work.status", "==", "in_progress")
-        .orderBy("work.updatedAt", "desc")
-        .orderBy(FieldPath.documentId(), "desc")
-        .limit(1)
-        .get(),
+      latestWorkV2(uid),
     ]);
     const packId = settings.exists ? selectionSchema.parse(settings.data()).packId : null;
     const packDoc = packId ? await root.collection("learningPacks").doc(packId).get() : null;
     const pack = packDoc?.exists ? learningPackV2Schema.parse(packDoc.get("pack")) : null;
     return apiJson({
       pack: pack ? { id: pack.id, title: pack.title } : null,
-      work: pending.empty ? null : learningWorkV2Schema.parse(pending.docs[0].get("work")),
+      work: pending,
     });
   });
 }
