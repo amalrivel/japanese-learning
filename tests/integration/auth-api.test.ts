@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { getFirestore, Timestamp } from "firebase-admin/firestore";
+import { getFirestore, Timestamp, FieldValue } from "firebase-admin/firestore";
 import { spawn, type ChildProcess } from "node:child_process";
 import { cp, mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -122,7 +122,7 @@ describe("authenticated API boundary", () => {
     testDirectory = await mkdtemp(join(tmpdir(), "learning-pwa-m2-"));
     for (const name of [
       "src",
-    "examples",
+      "examples",
       "public",
       "next.config.ts",
       "tsconfig.json",
@@ -1297,6 +1297,7 @@ describe("authenticated API boundary", () => {
       });
     const db = getFirestore(adminApp);
     const root = db.collection("users").doc(users[0].uid);
+    await db.recursiveDelete(root);
     expect((await send("/packs/import", "POST", { ...fixture, exercises: [] })).status).toBe(422);
     expect((await root.collection("learningPacks").get()).empty).toBe(true);
     expect((await send("/packs/import", "POST", fixture)).status).toBe(201);
@@ -1308,6 +1309,17 @@ describe("authenticated API boundary", () => {
     const start = { workId, packId: fixture.id };
     expect((await send("/works", "POST", start)).status).toBe(201);
     expect((await send("/works", "POST", start)).status).toBe(200);
+    const resumed = await Promise.all([
+      send("/works", "POST", { ...start, workId: "99999999-9999-4999-8999-999999999991" }),
+      send("/works", "POST", { ...start, workId: "99999999-9999-4999-8999-999999999992" }),
+    ]);
+    for (const response of resumed) {
+      expect(response.status).toBe(200);
+      expect((await response.json()).id).toBe(workId);
+    }
+    expect(
+      (await root.collection("learningWorks").where("work.packId", "==", fixture.id).get()).size,
+    ).toBe(1);
     const edit = {
       operationId,
       expectedRevision: 0,
@@ -1429,7 +1441,7 @@ describe("authenticated API boundary", () => {
           expectedRevision: 2,
         })
       ).status,
-    ).toBe(200);
+    ).toBe(409);
     expect(
       (
         await send(`/works/${workId}`, "PATCH", {
@@ -1503,6 +1515,156 @@ describe("authenticated API boundary", () => {
     expect((await send(`/teacher/context?${largeQuery}`)).status).toBe(413);
     await db.recursiveDelete(root);
   }, 60000);
+
+  it("keeps one work per package and permits revision only before teacher assessment", async () => {
+    const db = getFirestore(adminApp);
+    await db.recursiveDelete(db.collection("users").doc(users[0].uid));
+    const send = (path: string, method = "GET", body?: unknown) =>
+      fetch(`http://127.0.0.1:3100/api/v2${path}`, {
+        method,
+        headers: { Authorization: `Bearer ${tokens[0]}`, "Content-Type": "application/json" },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+    const pack = JSON.parse(readFileSync("examples/learning-pack.v2.json", "utf8"));
+    pack.id = "single-work-per-package";
+    expect((await send("/packs/import", "POST", pack)).status).toBe(201);
+    const ids = ["a1111111-1111-4111-8111-111111111111", "a2222222-2222-4222-8222-222222222222"];
+    const starts = await Promise.all(
+      ids.map((workId) => send("/works", "POST", { workId, packId: pack.id })),
+    );
+    expect(starts.map((response) => response.status).sort()).toEqual([200, 201]);
+    const works = await Promise.all(starts.map((response) => response.json()));
+    expect(works[0].id).toBe(works[1].id);
+    const id = works[0].id;
+    const sample = JSON.parse(readFileSync("examples/learning-work.v2.json", "utf8"));
+    const edit = {
+      answers: sample.answers,
+      reflection: sample.reflection,
+      currentExerciseId: sample.currentExerciseId,
+    };
+    const saved = await send(`/works/${id}`, "PATCH", {
+      ...edit,
+      operationId: crypto.randomUUID(),
+      expectedRevision: 0,
+    });
+    expect(saved.status).toBe(200);
+    const submitted = await (
+      await send(`/works/${id}/submit`, "POST", {
+        operationId: crypto.randomUUID(),
+        expectedRevision: 1,
+      })
+    ).json();
+    expect(submitted.status).toBe("submitted");
+    const operation = { operationId: crypto.randomUUID(), expectedRevision: submitted.revision };
+    const reopened = await send(`/works/${id}`, "POST", operation);
+    expect(reopened.status).toBe(200);
+    const resumed = await reopened.json();
+    expect(resumed.id).toBe(id);
+    expect(resumed.status).toBe("in_progress");
+    expect(await (await send(`/works/${id}`, "POST", operation)).json()).toEqual(resumed);
+    const snapshotId = crypto.randomUUID();
+    expect(
+      (
+        await send("/snapshots", "POST", {
+          snapshotId,
+          workId: id,
+          expectedRevision: resumed.revision,
+        })
+      ).status,
+    ).toBe(201);
+    const feedback = JSON.parse(readFileSync("examples/teacher-feedback.v2.json", "utf8"));
+    feedback.id = "single-work-assessment";
+    feedback.target = { snapshotId, workId: id, revision: resumed.revision };
+    expect((await send("/teacher/feedback", "POST", feedback)).status).toBe(201);
+    expect((await (await send(`/works/${id}`)).json()).reviewed).toBe(true);
+    expect(
+      (
+        await send(`/works/${id}`, "PATCH", {
+          ...edit,
+          operationId: crypto.randomUUID(),
+          expectedRevision: resumed.revision,
+        })
+      ).status,
+    ).toBe(409);
+    expect(
+      (
+        await send(`/works/${id}`, "POST", {
+          operationId: crypto.randomUUID(),
+          expectedRevision: resumed.revision,
+        })
+      ).status,
+    ).toBe(409);
+    const retriedStart = await (
+      await send("/works", "POST", { workId: crypto.randomUUID(), packId: pack.id })
+    ).json();
+    expect(retriedStart.id).toBe(id);
+    // Historical assessments must remain authoritative even without the newer lock markers.
+    await db
+      .collection("users")
+      .doc(users[0].uid)
+      .collection("learningWorks")
+      .doc(id)
+      .update({ reviewedAt: FieldValue.delete() });
+    await db
+      .collection("users")
+      .doc(users[0].uid)
+      .collection("learningPacks")
+      .doc(pack.id)
+      .update({ reviewedAt: FieldValue.delete() });
+    expect(
+      (
+        await send(`/works/${id}`, "POST", {
+          operationId: crypto.randomUUID(),
+          expectedRevision: resumed.revision,
+        })
+      ).status,
+    ).toBe(409);
+    const listed = await (await send("/works?limit=50")).json();
+    const matches = listed.items.filter((work: { packId: string }) => work.packId === pack.id);
+    expect(matches).toHaveLength(1);
+    expect(matches[0].packTitle).toBe(pack.title);
+    expect(matches[0].reviewed).toBe(true);
+    await db.recursiveDelete(db.collection("users").doc(users[0].uid));
+  });
+
+  it("shows one meaningful legacy work per package without deleting old answers", async () => {
+    const db = getFirestore(adminApp);
+    const user = db.collection("users").doc(users[0].uid);
+    await db.recursiveDelete(user);
+    const pack = JSON.parse(readFileSync("examples/learning-pack.v2.json", "utf8"));
+    pack.id = "legacy-work-selection";
+    const filled = JSON.parse(readFileSync("examples/learning-work.v2.json", "utf8"));
+    filled.packId = pack.id;
+    const empty = {
+      ...filled,
+      id: "a3333333-3333-4333-8333-333333333333",
+      answers: {},
+      updatedAt: "2026-11-11T00:00:00.000Z",
+    };
+    await user.collection("learningPacks").doc(pack.id).set({ pack });
+    await user.collection("learningWorks").doc(filled.id).set({ work: filled });
+    await user.collection("learningWorks").doc(empty.id).set({ work: empty });
+    const headers = { Authorization: `Bearer ${tokens[0]}`, "Content-Type": "application/json" };
+    const listed = await (
+      await fetch("http://127.0.0.1:3100/api/v2/works?limit=50", { headers })
+    ).json();
+    expect(listed.items).toHaveLength(1);
+    expect(listed.items[0].id).toBe(filled.id);
+    expect(listed.items[0].packTitle).toBe(pack.title);
+    const resumed = await (
+      await fetch("http://127.0.0.1:3100/api/v2/works", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ workId: crypto.randomUUID(), packId: pack.id }),
+      })
+    ).json();
+    expect(resumed.id).toBe(filled.id);
+    expect((await user.collection("learningWorks").get()).size).toBe(2);
+    expect(
+      (await user.collection("learningWorks").doc(filled.id).get()).get("work.answers"),
+    ).toEqual(filled.answers);
+    await db.recursiveDelete(user);
+  });
 
   it("bounds v2 progress by assessment import and finds older active work", async () => {
     const db = getFirestore(adminApp);

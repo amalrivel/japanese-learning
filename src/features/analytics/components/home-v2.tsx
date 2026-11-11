@@ -5,26 +5,14 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { ArrowUpRight, BookOpen, Clock3, GraduationCap, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth/client";
 import { request } from "@/features/practice/client/request";
-import type { ProgressV2 } from "../server/progress-v2.server";
 import type { LearningWorkV2 } from "@/features/practice/model/work-schema-v2";
 
 type Pack = { id: string; title: string };
 type Home = { pack: Pack | null; work: LearningWorkV2 | null };
 type Page = { items: Pack[]; nextCursor: string | null };
-const date = (value: string) =>
-  new Date(value).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" });
-function WindowLabel({ window: w }: { window: ProgressV2["workWindow"] }) {
-  return (
-    <p>
-      {w.count} dokumen{w.oldest && w.newest ? ` · ${date(w.oldest)} – ${date(w.newest)}` : ""}
-      {w.truncated ? " · Data lebih lama tidak tercakup." : ""}
-    </p>
-  );
-}
 export function HomeV2() {
   const { user } = useAuth();
   const [home, setHome] = useState<Home | null>(null);
-  const [progress, setProgress] = useState<ProgressV2 | null>(null);
   const [packs, setPacks] = useState<Page>({ items: [], nextCursor: null });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -34,7 +22,6 @@ export function HomeV2() {
     const cancel = () => {
       controller.abort();
       setHome(null);
-      setProgress(null);
       setPacks({ items: [], nextCursor: null });
       setError("");
     };
@@ -45,16 +32,14 @@ export function HomeV2() {
         if (!res.ok) throw new Error();
         return res.json() as Promise<T>;
       };
-      const [h, p, list] = await Promise.allSettled([
+      const [h, list] = await Promise.allSettled([
         get<Home>("/api/v2/home"),
-        get<ProgressV2>("/api/v2/progress"),
         get<Page>("/api/v2/packs"),
       ]);
       if (controller.signal.aborted) return;
       if (h.status === "fulfilled") setHome(h.value);
-      if (p.status === "fulfilled") setProgress(p.value);
       if (list.status === "fulfilled") setPacks(list.value);
-      if ([h, p, list].some((item) => item.status === "rejected"))
+      if ([h, list].some((item) => item.status === "rejected"))
         setError("Sebagian data belum dapat dimuat. Periksa koneksi lalu muat ulang.");
     }
     void load();
@@ -237,7 +222,9 @@ export function HomeV2() {
           <p>{error ? "Pekerjaan tidak dapat dimuat." : "Memuat pekerjaan…"}</p>
         ) : home.work ? (
           <p>
-            {home.work.packId} · revisi {home.work.revision} ·{" "}
+            {packs.items.find((item) => item.id === home.work?.packId)?.title ??
+              "Latihan tersimpan"}{" "}
+            · revisi {home.work.revision} ·{" "}
             <Link
               className="underline"
               href={`/manual/study?work=${encodeURIComponent(home.work.id)}`}
@@ -247,51 +234,6 @@ export function HomeV2() {
           </p>
         ) : (
           <p>Belum ada pekerjaan yang sedang dikerjakan.</p>
-        )}
-      </section>
-      <section className="flex flex-col gap-3 rounded-2xl border bg-card p-5 text-card-foreground shadow-sm sm:p-6">
-        <h2 id="progres" className="scroll-mt-6 text-xl font-semibold">
-          Progres belajar
-        </h2>
-        {!progress && (
-          <p className="text-muted-foreground" role="status">
-            {error ? "Progres belum dapat dimuat." : "Memuat progres…"}
-          </p>
-        )}
-        {progress && (
-          <>
-            <h3 className="font-medium">Aktivitas tersimpan</h3>
-            <WindowLabel window={progress.workWindow} />
-            <p>
-              {progress.answered} dari {progress.questions} soal dijawab;{" "}
-              {progress.questions - progress.answered} belum dijawab.
-            </p>
-            <h3 className="font-medium">Hasil guru</h3>
-            <WindowLabel window={progress.assessmentWindow} />
-            <p>
-              Jawaban tanpa hasil di sini: tidak ditemukan penilaian dalam jendela. Data di luar
-              jendela tidak diketahui.
-            </p>
-            {progress.skills.map((s) => (
-              <p key={s.label}>
-                {s.label}: {s.correct} benar, {s.partial} sebagian, {s.incorrect} belum tepat dari{" "}
-                {s.correct + s.partial + s.incorrect} penilaian.
-              </p>
-            ))}
-            {progress.results.map((r) => (
-              <p key={r.id}>
-                {date(r.importedAt)} · {r.title}, revisi {r.revision}: {r.correct} benar,{" "}
-                {r.partial} sebagian, {r.incorrect} belum tepat dari{" "}
-                {r.correct + r.partial + r.incorrect} soal dinilai. Tanggal guru:{" "}
-                {date(r.teacherCreatedAt)}.
-              </p>
-            ))}
-            <p className="text-sm text-muted-foreground">
-              Waktu ditampilkan dalam zona perangkat:{" "}
-              {Intl.DateTimeFormat().resolvedOptions().timeZone}. Penilaian revisi berbeda bukan
-              pekerjaan baru atau ukuran penguasaan.
-            </p>
-          </>
         )}
       </section>
       <section className="rounded-2xl bg-muted/60 p-5 text-sm leading-relaxed sm:p-6">
@@ -304,8 +246,8 @@ export function HomeV2() {
       </section>
       <nav aria-label="Navigasi belajar" className="grid gap-3 sm:grid-cols-2">
         {[
-          ["Belajar dan kerjakan latihan", "/manual"],
-          ["Paket dan pekerjaan saya", "/manual/works"],
+          ["Baca materi belajar", "/manual/materials"],
+          ["Lanjutkan latihan saya", "/manual/works"],
           ["Impor materi atau feedback", "/manual/import"],
           ["Bagikan jawaban ke guru", "/manual/teacher"],
         ].map(([label, href]) => (

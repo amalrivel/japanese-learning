@@ -16,7 +16,7 @@ describe("latest learning navigation", () => {
       () => import("../../src/app/(learner)/history/[attemptId]/page"),
       "/manual/works",
     ],
-    ["progress", () => import("../../src/app/(learner)/progress/page"), "/#progres"],
+    ["progress", () => import("../../src/app/(learner)/progress/page"), "/"],
     ["import", () => import("../../src/app/(management)/import/page"), "/manual/import"],
     ["teacher", () => import("../../src/app/(management)/teacher/report/page"), "/manual/teacher"],
   ] as const)("redirects %s to the latest flow", async (_, load, destination) => {

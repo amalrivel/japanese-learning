@@ -30,15 +30,35 @@ Pola ini diterapkan pada beranda, masuk/auth gate, latihan dan detailnya,
 riwayat dan detailnya, progres, impor, laporan guru, alur manual v2, dan 404.
 Header akun, navigasi, kontrol tema, serta Button berasal dari komponen bersama.
 
-Navigasi produk terbaru tidak menampilkan label v1/v2. Menu Utama menampilkan
-ringkasan, Belajar membuka `/manual`, Pekerjaan menuju `/manual/works`, dan
-Progres menuju `/#progres`. Workspace belajar dipisahkan menjadi halaman
+Navigasi produk terbaru tidak menampilkan label v1/v2. Menu Beranda membuka `/`,
+Belajar membuka `/manual/materials` untuk membaca materi, dan Latihan membuka
+`/manual/works` untuk melanjutkan jawaban. Menu serta kartu Progres kosong dihapus.
+Hanya ada satu navbar utama; tidak ada baris tab ruang belajar kedua.
+Panduan AI dan Impor tersedia sebagai tindakan di Belajar; Ruang guru dan
+melanjutkan latihan aktif tersedia di Latihan.
+Halaman turunan memiliki satu tautan kembali di atas judul dengan tujuan eksplisit:
+Panduan AI, Impor, dan pembaca materi kembali ke Materi belajar;
+latihan dan Ruang guru kembali ke Latihan saya. Gunakan tujuan tetap agar
+tautan tetap berfungsi saat halaman dibuka langsung, tanpa menambah navbar kedua.
+Workspace belajar dipisahkan menjadi halaman
 `/manual/guide` (prompt/panduan), `/manual/import` (impor), `/manual/works`
 (daftar), `/manual/study` (materi/latihan), dan `/manual/teacher` (snapshot/feedback).
 Ringkasan tidak memuat formulir panjang. Layout workspace mempertahankan state
 selama navigasi client; editor aktif tetap mounted agar sinkronisasi draf berlanjut.
 Ini tidak menjamin isian impor bertahan setelah refresh atau penutupan tab.
 URL layar lama diarahkan ke bagian terbaru, bukan menampilkan data alur v1.
+
+Layar latihan mengikuti tiga tahap: Materi → Soal → Refleksi. Satu tindakan
+utama per tahap: Mulai latihan, Berikutnya, lalu Selesai untuk sekarang.
+Tombol selesai hanya tampil pada refleksi; refleksi tetap opsional dan latihan
+parsial boleh diselesaikan. Furigana serta pintasan materi/refleksi berada dalam
+panel Bantuan dan pengaturan yang tertutup secara bawaan. Salinan jawaban untuk
+guru berada dalam panel Minta penilaian guru AI, dengan penjelasan bahwa
+pengiriman ke chat AI dilakukan sendiri oleh pengguna.
+Autosave tidak menyisipkan peringatan di atas soal. Status penyimpanan memakai
+ruang yang stabil; tombol coba sinkronkan hanya muncul setelah proses sinkronisasi
+berhenti. Peringatan salinan jawaban belum tersimpan berada di panel guru.
+Perubahan jawaban mempertahankan posisi gulir, fokus, dan elemen input yang sama.
 
 Verifikasi 11 November 2026:
 

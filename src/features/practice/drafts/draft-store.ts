@@ -23,7 +23,12 @@ export type DeviceDraft = {
   base: EditableWork;
   editable: EditableWork;
   pending: PendingWorkMutation | null;
-  replacement?: { workId: string; operationId: string; sent: EditableWork };
+  replacement?: {
+    workId: string;
+    operationId: string;
+    sent: EditableWork;
+    expectedRevision?: number;
+  };
 };
 
 const editableSchema = z.strictObject({
@@ -55,7 +60,12 @@ const draftSchema = z.strictObject({
   editable: editableSchema,
   pending: pendingSchema.nullable(),
   replacement: z
-    .strictObject({ workId: attemptIdSchema, operationId: attemptIdSchema, sent: editableSchema })
+    .strictObject({
+      workId: attemptIdSchema,
+      operationId: attemptIdSchema,
+      sent: editableSchema,
+      expectedRevision: z.number().int().nonnegative().safe().optional(),
+    })
     .optional(),
 });
 

@@ -104,9 +104,11 @@ ditanamkan saat build. Kedua berkas diabaikan Git dan harus disediakan sendiri.
 
 Buka [localhost:3000](http://localhost:3000). Seluruh navigasi memakai alur terbaru:
 `/manual` sebagai ringkasan belajar; `/manual/guide` untuk prompt guru AI,
-`/manual/import` untuk impor, `/manual/works` untuk paket/pekerjaan,
+`/manual/import` untuk impor, `/manual/materials` untuk membaca materi,
+`/manual/works` untuk latihan tersimpan,
 `/manual/study` untuk latihan, dan `/manual/teacher` untuk berbagi jawaban ke guru;
-beranda memuat progres belajar. URL lama `/import`, `/practice`, `/history`,
+beranda memuat sesi belajar berikutnya. Menu Progres yang kosong sudah dihapus.
+URL lama `/import`, `/practice`, `/history`,
 `/progress`, dan `/teacher/report` diarahkan ke bagian terbaru yang sesuai.
 Konfigurasi Firebase dan UID yang diizinkan
 diperlukan; suite emulator membawa konfigurasi demo terpisah. Jangan memakai data

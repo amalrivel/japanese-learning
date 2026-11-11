@@ -128,8 +128,15 @@ export async function importFeedbackV2(uid: string, feedback: TeacherFeedbackV2)
     };
     if (Buffer.byteLength(JSON.stringify(candidate)) > maxContextBytes) return "limit" as const;
     if (!teacherContextV2Schema.safeParse(candidate).success) return "invalid" as const;
+    const workRef = user.collection("learningWorks").doc(snapshot.work.id);
+    const packRef = user.collection("learningPacks").doc(snapshot.pack.id);
+    const [currentWork, currentPack] = await tx.getAll(workRef, packRef);
     tx.create(ref, { feedback, contentHash, importedAt: now });
     tx.update(snapshotRef, { feedbackIds: [...ids, feedback.id] });
+    if (feedback.mode === "assessment") {
+      if (currentWork.exists) tx.update(workRef, { reviewedAt: now });
+      if (currentPack.exists) tx.update(packRef, { reviewedAt: now });
+    }
     return "created" as const;
   });
 }

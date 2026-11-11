@@ -124,8 +124,19 @@ Route baru berada di `/api/v2`: `packs` (daftar/detail/impor), `works`
 cursor ID dan halaman maksimal 50. Snapshot unik per pekerjaan/revisi; metadata
 operasi di bawah pekerjaan menyimpan receipt untuk retry save/submit. Retry dengan
 operation ID dan isi sama mengembalikan hasil semula; isi berbeda ditolak.
-Work submitted terkunci dan pengerjaan baru memerlukan work ID baru. Submit boleh
-parsial dan tidak menilai. Context membatasi 10 snapshot, 40 feedback, dan 512 KiB;
+Setiap paket memiliki satu pekerjaan utama melalui pointer `learningPacks.workId`.
+Transaksi start membaca dan memperbarui dokumen paket sehingga klik ganda atau dua
+tab mengembalikan pekerjaan yang sama. Duplikat historis tidak dihapus; daftar
+memilih pekerjaan berjawaban paling lengkap, lalu terbaru, sebelum pointer tersedia.
+Daftar menampilkan judul paket, bukan ID teknis.
+
+Submit boleh parsial dan tidak menilai. Pekerjaan submitted bisa dibuka kembali
+melalui `POST /api/v2/works/{workId}` dengan operation ID dan revisi yang diharapkan.
+Receipt reopen terpisah menjaga retry dan ID pekerjaan tetap sama. Setelah assessment
+guru diimpor, metadata `reviewedAt` pada pekerjaan/paket mengunci save, submit,
+dan reopen. Riwayat snapshot lama juga diperiksa untuk assessment tanpa marker.
+Snapshot dan feedback lama tetap immutable meskipun pekerjaan direvisi sebelum dinilai.
+Context membatasi 10 snapshot, 40 feedback, dan 512 KiB;
 riwayat yang melampaui batas ditolak tanpa pemotongan. Penanda feedback per snapshot
 membuat transaksi impor bersamaan membaca dan memvalidasi ulang seluruh riwayat.
 

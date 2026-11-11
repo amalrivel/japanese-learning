@@ -1,12 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/client";
 import { Button } from "@/components/ui/button";
 import { BookOpen } from "lucide-react";
 
 export function SignInForm() {
-  const { user, loading, error, signIn, signOutUser } = useAuth();
+  const { user, loading, error, signIn } = useAuth();
+  const router = useRouter();
+  useEffect(() => {
+    if (!loading && user) router.replace("/");
+  }, [loading, user, router]);
   return (
     <main className="learning-page flex min-h-dvh max-w-lg flex-col justify-center">
       <div className="rounded-3xl border bg-card p-6 shadow-sm sm:p-10">
@@ -23,12 +29,9 @@ export function SignInForm() {
             Checking sign-in…
           </p>
         ) : user ? (
-          <div className="mt-6 flex flex-col gap-3">
-            <p className="break-all">Signed in as {user.email ?? "your account"}.</p>
-            <Button variant="outline" onClick={signOutUser}>
-              Sign out
-            </Button>
-          </div>
+          <p className="mt-6" role="status">
+            Mengalihkan ke beranda…
+          </p>
         ) : (
           <Button className="mt-6 w-full" onClick={signIn}>
             Continue with Google

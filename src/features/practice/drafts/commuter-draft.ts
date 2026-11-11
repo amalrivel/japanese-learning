@@ -2,12 +2,15 @@ import type { User } from "firebase/auth";
 import { canonicalJson } from "@/features/content/model/schema";
 import type { LearningPackV2 } from "@/features/content/model/schema-v2";
 import { request } from "../client/request";
-import { learningWorkV2Schema, workMatchesPackV2, type LearningWorkV2 } from "../model/work-schema-v2";
+import {
+  learningWorkV2Schema,
+  workMatchesPackV2,
+  type LearningWorkV2,
+} from "../model/work-schema-v2";
 import {
   readDeviceDrafts,
   activateDeviceAccount,
   writeDeviceDraft,
-  deleteDeviceDraft,
   type DeviceDraft,
   type EditableWork,
   type PendingWorkMutation,
@@ -28,6 +31,7 @@ export type DraftView = {
   storageFailed: boolean;
   pending: boolean;
   submitting: boolean;
+  syncing: boolean;
   branches: DeviceDraft[];
   message: string;
 };
@@ -70,6 +74,7 @@ export class CommuterDraft {
         submitting:
           this.submitRequested ||
           (this.record?.pending ?? this.emergencyPending)?.kind === "submit",
+        syncing: this.syncing,
         branches: this.branches,
         message: this.message,
       });
@@ -162,10 +167,19 @@ export class CommuterDraft {
       ) {
         this.status = "submitted";
         this.message =
-          "Pekerjaan telah diakhiri. Draf perangkat dipertahankan untuk pekerjaan baru.";
+          "Pekerjaan telah diakhiri. Draf perangkat tetap disimpan untuk revisi sebelum diperiksa guru.";
       } else if (this.work.revision !== this.record.baseRevision) {
-        this.status = "conflict";
-        this.message = "Revisi server berubah. Pilih salinan yang akan digunakan.";
+        if (same(this.record.editable, editableWork(this.work)) && !this.record.pending) {
+          await this.persist({
+            ...this.record,
+            baseRevision: this.work.revision,
+            base: editableWork(this.work),
+          });
+          this.status = "server";
+        } else {
+          this.status = "conflict";
+          this.message = "Revisi server berubah. Pilih salinan yang akan digunakan.";
+        }
       } else {
         this.status =
           this.work.status === "submitted"
@@ -559,7 +573,7 @@ export class CommuterDraft {
         await this.persist({
           ...this.record,
           replacement: {
-            workId: crypto.randomUUID(),
+            workId: this.work.id,
             operationId: crypto.randomUUID(),
             sent: this.editable,
           },
@@ -568,33 +582,52 @@ export class CommuterDraft {
       const replacement = this.record?.replacement;
       if (!replacement || this.status === "conflict") return;
       this.status = "saving";
-      this.message = "Membuat pekerjaan baru…";
+      this.message = "Melanjutkan latihan yang sama…";
       this.publish();
-      await this.api("/api/v2/works", {
+      const resumed = await this.api<LearningWorkV2>(`/api/v2/works/${this.work.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workId: replacement.workId, packId: this.pack.id }),
+        body: JSON.stringify({
+          operationId: replacement.operationId,
+          expectedRevision: this.work.revision,
+        }),
       });
-      const saved = await this.api<LearningWorkV2>(`/api/v2/works/${replacement.workId}`, {
+      if (
+        replacement.expectedRevision === undefined &&
+        !(await this.persist({
+          ...this.record!,
+          replacement: { ...replacement, expectedRevision: resumed.revision },
+        }))
+      )
+        return;
+      const saved = await this.api<LearningWorkV2>(`/api/v2/works/${this.work.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           operationId: replacement.operationId,
-          expectedRevision: 0,
+          expectedRevision: this.record!.replacement!.expectedRevision,
           ...replacement.sent,
         }),
       });
       if (this.disposed) return;
-      await deleteDeviceDraft(this.record!);
+      await this.persist({
+        ...this.record!,
+        baseRevision: saved.revision,
+        base: editableWork(saved),
+        editable: editableWork(saved),
+        pending: null,
+        replacement: undefined,
+      });
+      this.submitRequested = false;
       this.work = saved;
       this.editable = editableWork(saved);
       this.status = "server";
-      this.message = "Draf disimpan sebagai pekerjaan baru.";
+      this.message = "Draf diterapkan pada latihan yang sama.";
     } catch {
       if (!this.disposed) {
         this.status = "submitted";
         this.message =
-          "Pekerjaan baru belum dipastikan. Draf tetap disimpan; ulangi untuk melanjutkan.";
+          "Revisi belum dipastikan atau sudah diperiksa guru. Draf tetap disimpan; salin jawaban sebelum meninggalkan halaman.";
       }
     }
     this.publish();

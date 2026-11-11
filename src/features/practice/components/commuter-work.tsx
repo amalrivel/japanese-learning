@@ -9,6 +9,7 @@ import { CommuterDraft, editableWork, type DraftView } from "../drafts/commuter-
 import { isAnsweredV2, type LearningWorkV2 } from "../model/work-schema-v2";
 
 type Props = {
+  reviewed?: boolean;
   user: User;
   initialWork: LearningWorkV2;
   pack: LearningPackV2;
@@ -34,7 +35,14 @@ function RichText({ value, showReading }: { value: RichSegment[]; showReading: b
 }
 const labels = { correct: "benar", partial: "sebagian", incorrect: "belum tepat" } as const;
 
-export function CommuterWork({ user, initialWork, pack, context, onView }: Props) {
+export function CommuterWork({
+  user,
+  initialWork,
+  pack,
+  context,
+  onView,
+  reviewed = false,
+}: Props) {
   const session = useRef<CommuterDraft | null>(null);
   const callback = useRef(onView);
   useEffect(() => {
@@ -47,12 +55,14 @@ export function CommuterWork({ user, initialWork, pack, context, onView }: Props
     storageFailed: false,
     pending: false,
     submitting: false,
+    syncing: false,
     branches: [],
     message: "Memuat draf…",
   });
   const [mode, setMode] = useState<"materials" | "exercise" | "reflection">("materials");
   const [index, setIndex] = useState(0);
   const [showReading, setShowReading] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const [copyNotice, setCopyNotice] = useState("");
   const initialized = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -85,9 +95,10 @@ export function CommuterWork({ user, initialWork, pack, context, onView }: Props
     };
   }, [user.uid, initialWork.id, pack.id]); // eslint-disable-line react-hooks/exhaustive-deps
   function navigate(nextMode: "materials" | "exercise" | "reflection", nextIndex = index) {
+    setOptionsOpen(false);
     setMode(nextMode);
     setIndex(nextIndex);
-    if (nextMode === "exercise")
+    if (nextMode === "exercise" && !reviewed)
       session.current?.update({
         ...view.editable,
         currentExerciseId: pack.exercises[nextIndex].id,
@@ -104,6 +115,7 @@ export function CommuterWork({ user, initialWork, pack, context, onView }: Props
   const disabled =
     view.status === "loading" ||
     view.branches.length > 1 ||
+    reviewed ||
     view.work.status === "submitted" ||
     view.submitting;
   const exercise = pack.exercises[index];
@@ -125,7 +137,14 @@ export function CommuterWork({ user, initialWork, pack, context, onView }: Props
   return (
     <section className="flex flex-col gap-4">
       <h2 className="text-xl font-semibold">{pack.title}</h2>
-      <p role="status">
+      <p className="text-sm text-muted-foreground">
+        {mode === "materials"
+          ? "1 dari 3 · Baca materi"
+          : mode === "exercise"
+            ? "2 dari 3 · Kerjakan soal"
+            : "3 dari 3 · Refleksi dan selesai"}
+      </p>
+      <p role="status" className="min-h-12">
         {view.message ||
           {
             loading: "Memuat draf…",
@@ -163,7 +182,7 @@ export function CommuterWork({ user, initialWork, pack, context, onView }: Props
           </Button>
         </div>
       )}
-      {!view.storageFailed && view.status === "local" && (
+      {!view.storageFailed && view.status === "local" && !view.syncing && (
         <Button className="min-h-11" variant="outline" onClick={() => session.current?.retry()}>
           Coba sinkronkan
         </Button>
@@ -223,31 +242,54 @@ export function CommuterWork({ user, initialWork, pack, context, onView }: Props
           </Button>
         </div>
       )}
-      {view.status === "submitted" && (
+      {!reviewed && view.status === "submitted" && (
         <Button
           className="min-h-11"
           variant="outline"
           onClick={() => {
-            if (window.confirm("Buat pekerjaan baru dari draf HP?"))
+            if (
+              window.confirm(
+                "Terapkan draf HP ke latihan ini? Revisi hanya diizinkan sebelum diperiksa guru.",
+              )
+            )
               void session.current?.createReplacement();
           }}
         >
-          Buat pekerjaan baru dari draf
+          Terapkan draf ke latihan ini
         </Button>
       )}
-      {pack.furigana === "toggle" && (
-        <Button className="min-h-11" variant="outline" onClick={() => setShowReading(!showReading)}>
-          {showReading ? "Sembunyikan furigana" : "Tampilkan furigana"}
-        </Button>
-      )}
-      <div className="flex flex-wrap gap-2">
-        <Button className="min-h-11" variant="outline" onClick={() => navigate("materials")}>
-          Materi
-        </Button>
-        <Button className="min-h-11" variant="outline" onClick={() => navigate("reflection")}>
-          Refleksi
-        </Button>
-      </div>
+      <details
+        open={optionsOpen}
+        onToggle={(event) => setOptionsOpen(event.currentTarget.open)}
+        className="rounded-xl border px-4"
+      >
+        <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium">
+          Bantuan dan pengaturan
+        </summary>
+        <div className="flex flex-col gap-3 pb-4">
+          {pack.furigana === "toggle" && (
+            <Button variant="outline" onClick={() => setShowReading(!showReading)}>
+              {showReading ? "Sembunyikan furigana" : "Tampilkan furigana"}
+            </Button>
+          )}
+          {mode !== "materials" && (
+            <Button variant="outline" onClick={() => navigate("materials")}>
+              Materi
+            </Button>
+          )}
+          {mode !== "reflection" && !reviewed && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Waktu habis? Buka refleksi untuk menyelesaikan sesi meskipun belum semua soal
+                dijawab.
+              </p>
+              <Button variant="outline" onClick={() => navigate("reflection")}>
+                Refleksi
+              </Button>
+            </>
+          )}
+        </div>
+      </details>
       {mode === "materials" && (
         <div className="flex flex-col gap-3">
           <h3 ref={heading} tabIndex={-1} className="text-lg font-medium">
@@ -278,13 +320,9 @@ export function CommuterWork({ user, initialWork, pack, context, onView }: Props
           <p>
             {!isAnsweredV2(answer.response)
               ? "Belum dijawab"
-              : view.status !== "server"
-                ? "Perubahan belum dinilai"
-                : !snapshot
-                  ? "Muat snapshot untuk melihat penilaian"
-                  : assessment
-                    ? `Hasil guru: ${labels[assessment.outcome]}`
-                    : "Belum dinilai"}
+              : assessment && view.status === "server"
+                ? `Hasil guru: ${labels[assessment.outcome]}`
+                : "Belum dinilai"}
           </p>
           <fieldset disabled={disabled} className="flex flex-col gap-3">
             {exercise.type === "multiple_choice" ? (
@@ -351,7 +389,7 @@ export function CommuterWork({ user, initialWork, pack, context, onView }: Props
                   : navigate("exercise", index + 1)
               }
             >
-              Berikutnya
+              {index + 1 === pack.exercises.length ? "Lanjut ke refleksi" : "Berikutnya"}
             </Button>
           </div>
         </div>
@@ -361,6 +399,10 @@ export function CommuterWork({ user, initialWork, pack, context, onView }: Props
           <h3 ref={heading} tabIndex={-1} className="text-lg font-medium">
             Refleksi 3–2–1
           </h3>
+          <p className="text-sm text-muted-foreground">
+            Opsional: catat yang sudah dipahami dan yang ingin ditanyakan. Jawaban disimpan
+            otomatis; Anda bisa melanjutkan atau merevisi sebelum dinilai guru.
+          </p>
           <fieldset disabled={disabled} className="flex flex-col gap-3">
             {(["understood", "unclear"] as const).map((field) => (
               <div className="flex flex-col gap-2" key={field}>
@@ -405,23 +447,26 @@ export function CommuterWork({ user, initialWork, pack, context, onView }: Props
           <Button
             className="min-h-11"
             variant="outline"
-            onClick={() => navigate("exercise", pack.exercises.length - 1)}
+            onClick={() => navigate("exercise", index)}
           >
-            Sebelumnya
+            Kembali ke soal
           </Button>
         </div>
       )}
-      {view.work.status === "in_progress" && (
+      {mode === "reflection" && !reviewed && view.work.status === "in_progress" && (
         <Button
           className="min-h-11"
-          variant="outline"
-          disabled={view.status !== "server" || view.pending || view.storageFailed}
+          disabled={reviewed || view.status !== "server" || view.pending || view.storageFailed}
           onClick={() => {
-            if (window.confirm("Akhiri pekerjaan? Pekerjaan tidak dapat diubah lagi."))
+            if (
+              window.confirm(
+                "Selesaikan latihan sementara? Anda masih dapat merevisi sebelum diperiksa guru.",
+              )
+            )
               void session.current?.submit();
           }}
         >
-          Akhiri pekerjaan
+          Selesai untuk sekarang
         </Button>
       )}
     </section>

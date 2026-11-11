@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -51,7 +52,11 @@ export function ManualLearning() {
       "Impor materi dan feedback",
       "Tempel JSON, periksa pratinjau, lalu konfirmasi penyimpanan.",
     ],
-    works: ["Paket dan pekerjaan", "Pilih paket belajar atau lanjutkan pekerjaan yang tersimpan."],
+    materials: [
+      "Materi belajar",
+      "Baca materi terlebih dahulu, kemudian lanjutkan latihan pada paket yang sama.",
+    ],
+    works: ["Latihan saya", "Pilih paket belajar atau lanjutkan pekerjaan yang tersimpan."],
     study: ["Latihan", "Fokus pada materi dan jawaban Anda, satu langkah pada satu waktu."],
     teacher: [
       "Berbagi dengan guru",
@@ -61,10 +66,17 @@ export function ManualLearning() {
   const [title, description] = headings[page] || headings.overview;
   const { user } = useAuth();
   const [packs, setPacks] = useState<Page<PackItem>>({ items: [], nextCursor: null });
-  const [works, setWorks] = useState<Page<LearningWorkV2>>({ items: [], nextCursor: null });
+  const [works, setWorks] = useState<
+    Page<LearningWorkV2 & { packTitle?: string; reviewed?: boolean }>
+  >({
+    items: [],
+    nextCursor: null,
+  });
   const [snapshots, setSnapshots] = useState<Page<SnapshotItem>>({ items: [], nextCursor: null });
   const [pack, setPack] = useState<LearningPackV2 | null>(null);
   const [work, setWork] = useState<LearningWorkV2 | null>(null);
+  const [reviewed, setReviewed] = useState(false);
+  const [editorVersion, setEditorVersion] = useState(0);
   const [draft, setDraft] = useState<Editable | null>(null);
   const [raw, setRaw] = useState("");
   const [preview, setPreview] = useState<Preview>();
@@ -144,7 +156,7 @@ export function ManualLearning() {
   async function refresh() {
     const [p, w, s] = await Promise.all([
       call<Page<PackItem>>("/api/v2/packs"),
-      call<Page<LearningWorkV2>>("/api/v2/works"),
+      call<Page<LearningWorkV2 & { packTitle?: string; reviewed?: boolean }>>("/api/v2/works"),
       call<Page<SnapshotItem>>("/api/v2/snapshots"),
     ]);
     setPacks(p);
@@ -181,11 +193,14 @@ export function ManualLearning() {
     if (workId && work?.id !== workId)
       void Promise.resolve().then(() =>
         run(async () => {
-          const result = await call<{ work: LearningWorkV2; pack: LearningPackV2 }>(
-            `/api/v2/works/${encodeURIComponent(workId)}`,
-          );
+          const result = await call<{
+            work: LearningWorkV2;
+            pack: LearningPackV2;
+            reviewed?: boolean;
+          }>(`/api/v2/works/${encodeURIComponent(workId)}`);
           if (!active) return;
           setWork(result.work);
+          setReviewed(Boolean(result.reviewed));
           setPack(result.pack);
           setDraft(editable(result.work));
           setDraftView(null);
@@ -272,28 +287,40 @@ export function ManualLearning() {
       return;
     }
     if (!confirmed && !confirmLeave()) return;
-    const result = await call<{ work: LearningWorkV2; pack: LearningPackV2 }>(
+    const result = await call<{ work: LearningWorkV2; pack: LearningPackV2; reviewed?: boolean }>(
       `/api/v2/works/${id}`,
     );
     setWork(result.work);
+    setReviewed(Boolean(result.reviewed));
     setPack(result.pack);
     router.push(`/manual/study?work=${encodeURIComponent(id)}`);
     setDraft(editable(result.work));
     setDraftView(null);
   }
   const inputClass = "w-full rounded-md border bg-background p-2 text-base";
+  const parent =
+    page === "guide" ||
+    page === "import" ||
+    (page === "study" && new URLSearchParams(queryString).has("pack"))
+      ? { href: "/manual/materials", label: "Kembali ke materi belajar" }
+      : page === "teacher" || page === "study"
+        ? { href: "/manual/works", label: "Kembali ke latihan saya" }
+        : null;
   return (
     <main className="learning-page flex flex-col gap-6">
       <div>
-        <Link
-          href="/"
-          className="underline"
-          onClick={(event) => {
-            if (!confirmLeave()) event.preventDefault();
-          }}
-        >
-          Beranda
-        </Link>
+        {parent && (
+          <Link
+            href={parent.href}
+            className={buttonVariants({ variant: "ghost", className: "mb-2" })}
+            onClick={(event) => {
+              if (!confirmLeave()) event.preventDefault();
+            }}
+          >
+            <ArrowLeft data-icon="inline-start" aria-hidden="true" />
+            {parent.label}
+          </Link>
+        )}
         <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h1>
         <p className="mt-2 text-muted-foreground">{description}</p>
       </div>
@@ -302,28 +329,31 @@ export function ManualLearning() {
           {message}
         </p>
       )}
-      <nav aria-label="Bagian ruang belajar" className="flex flex-wrap gap-2">
-        {[
-          ["/manual", "Ringkasan"],
-          ["/manual/guide", "Panduan AI"],
-          ["/manual/import", "Impor"],
-          ["/manual/works", "Pekerjaan"],
-          [work ? `/manual/study?work=${encodeURIComponent(work.id)}` : "/manual/study", "Latihan"],
-          ["/manual/teacher", "Guru"],
-        ].map(([href, label]) => (
-          <Link
-            key={label}
-            href={href}
-            aria-current={pathname === href.split("?")[0] ? "page" : undefined}
-            className={buttonVariants({
-              variant: pathname === href.split("?")[0] ? "secondary" : "outline",
-              className: "min-h-11",
-            })}
-          >
-            {label}
+      {page === "materials" && (
+        <div className="flex flex-wrap gap-3">
+          <Link href="/manual/guide" className={buttonVariants({ variant: "outline" })}>
+            Panduan AI
           </Link>
-        ))}
-      </nav>
+          <Link href="/manual/import" className={buttonVariants()}>
+            Impor materi atau feedback
+          </Link>
+        </div>
+      )}
+      {page === "works" && (
+        <div className="flex flex-wrap gap-3">
+          {work && (
+            <Link
+              href={`/manual/study?work=${encodeURIComponent(work.id)}`}
+              className={buttonVariants()}
+            >
+              Lanjutkan latihan aktif
+            </Link>
+          )}
+          <Link href="/manual/teacher" className={buttonVariants({ variant: "outline" })}>
+            Ruang guru
+          </Link>
+        </div>
+      )}
       {page === "overview" && (
         <section className="flex flex-col gap-4">
           <h2 className="text-xl font-semibold">Apa yang ingin Anda lakukan?</h2>
@@ -406,13 +436,13 @@ export function ManualLearning() {
             onClick={() =>
               void run(async () => {
                 const id = (startIds.current[pack.id] ??= crypto.randomUUID());
-                await call("/api/v2/works", {
+                const started = await call<LearningWorkV2>("/api/v2/works", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ workId: id, packId: pack.id }),
                 });
                 delete startIds.current[pack.id];
-                await openWork(id, true);
+                await openWork(started.id, true);
                 await refresh();
               })
             }
@@ -538,6 +568,12 @@ export function ManualLearning() {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(preview),
                       });
+                      if (
+                        preview.kind === "teacher-feedback" &&
+                        preview.mode === "assessment" &&
+                        work?.id === preview.target.workId
+                      )
+                        setReviewed(true);
                       setPreview(undefined);
                       setRaw("");
                       setContext(null);
@@ -584,10 +620,10 @@ export function ManualLearning() {
           )}
         </section>
       )}
-      {page === "works" && (
+      {page === "materials" && (
         <section className="flex flex-col gap-3">
           <h2 id="pekerjaan" className="scroll-mt-6 text-xl font-semibold">
-            Paket dan pekerjaan
+            Paket materi
           </h2>
           {packs.items.length === 0 && works.items.length === 0 && (
             <p className="text-muted-foreground">
@@ -603,27 +639,17 @@ export function ManualLearning() {
             Pilih paket untuk membuat pekerjaan dan mulai belajar.
           </p>
           {packs.items.map((item) => (
-            <div className="flex flex-wrap items-center justify-between gap-2" key={item.id}>
+            <div
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4"
+              key={item.id}
+            >
               <span>{item.title}</span>
               <Button
                 variant="outline"
                 disabled={busy}
-                onClick={() =>
-                  void run(async () => {
-                    if (!confirmLeave()) return;
-                    const id = (startIds.current[item.id] ??= crypto.randomUUID());
-                    await call("/api/v2/works", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ workId: id, packId: item.id }),
-                    });
-                    delete startIds.current[item.id];
-                    await openWork(id, true);
-                    await refresh();
-                  })
-                }
+                onClick={() => router.push(`/manual/study?pack=${encodeURIComponent(item.id)}`)}
               >
-                Mulai pekerjaan
+                Baca materi
               </Button>
             </div>
           ))}
@@ -636,15 +662,29 @@ export function ManualLearning() {
               Paket lainnya
             </Button>
           )}
-          <h3 className="mt-3 font-semibold">Pekerjaan tersimpan</h3>
+        </section>
+      )}
+      {page === "works" && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xl font-semibold">Latihan tersimpan</h2>
           <p className="text-sm text-muted-foreground">
             Buka kembali jawaban dan posisi latihan Anda.
           </p>
           {works.items.map((item) => (
-            <div className="flex flex-wrap items-center justify-between gap-2" key={item.id}>
+            <div
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4"
+              key={item.id}
+            >
               <span>
-                {item.packId} · revisi {item.revision} ·{" "}
-                {item.status === "in_progress" ? "sedang dikerjakan" : "diakhiri"}
+                {item.packTitle ??
+                  packs.items.find((p) => p.id === item.packId)?.title ??
+                  "Materi belajar"}{" "}
+                · revisi {item.revision} ·{" "}
+                {item.reviewed
+                  ? "Sudah diperiksa guru"
+                  : item.status === "in_progress"
+                    ? "Sedang dikerjakan"
+                    : "Selesai sementara · dapat direvisi"}
               </span>
               <Button
                 variant="outline"
@@ -671,14 +711,32 @@ export function ManualLearning() {
           hidden={page !== "study"}
           className={page === "study" ? "flex flex-col gap-4" : "hidden"}
         >
-          {page === "study" && (dirty || pending) && (
-            <p className="text-sm text-muted-foreground">
-              Perubahan yang belum dipastikan tersimpan di server tidak termasuk dalam snapshot yang
-              dipilih.
-            </p>
+          {reviewed && <p role="status">Latihan sudah diperiksa guru dan hanya dapat dibaca.</p>}
+          {!reviewed && work.status === "submitted" && (
+            <Button
+              onClick={() =>
+                void run(async () => {
+                  const updated = await call<LearningWorkV2>(`/api/v2/works/${work.id}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      operationId: crypto.randomUUID(),
+                      expectedRevision: work.revision,
+                    }),
+                  });
+                  setWork(updated);
+                  setDraft(editable(updated));
+                  setDraftView(null);
+                  setEditorVersion((value) => value + 1);
+                })
+              }
+            >
+              Lanjutkan revisi latihan
+            </Button>
           )}
           <CommuterWork
-            key={work.id}
+            key={`${work.id}:${editorVersion}`}
+            reviewed={reviewed}
             user={user!}
             initialWork={work}
             pack={pack}
@@ -689,40 +747,58 @@ export function ManualLearning() {
               setDraft(view.editable);
             }}
           />
-          <Button
-            variant="outline"
-            disabled={busy}
-            onClick={() =>
-              void run(async () => {
-                if (
-                  dirty ||
-                  (pending &&
-                    !window.confirm(
-                      `Perubahan belum tersimpan tidak akan masuk snapshot. Buat snapshot revisi server ${work.revision}?`,
-                    ))
-                )
-                  return;
-                const key = `${work.id}:${work.revision}`;
-                const id = (snapshotIds.current[key] ??= crypto.randomUUID());
-                await call("/api/v2/snapshots", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    snapshotId: id,
-                    workId: work.id,
-                    expectedRevision: work.revision,
-                  }),
-                });
-                setMessage(`Snapshot revisi ${work.revision} dibuat.`);
-                await refresh();
-              })
-            }
-          >
-            Buat snapshot revisi server
-          </Button>
-          <Link href="/manual/teacher" className={buttonVariants({ variant: "outline" })}>
-            Lanjut ke halaman guru
-          </Link>
+          <details className="rounded-xl border px-4">
+            <summary className="min-h-11 cursor-pointer py-3 font-medium">
+              Minta penilaian guru AI
+            </summary>
+            <div className="flex flex-col gap-3 pb-4">
+              {(dirty || pending) && (
+                <p className="text-sm text-muted-foreground">
+                  Perubahan yang belum dipastikan tersimpan di server tidak termasuk dalam snapshot
+                  yang dipilih.
+                </p>
+              )}
+              <p className="text-sm text-muted-foreground">
+                Opsional, bisa dilakukan meski latihan belum selesai. Buat salinan jawaban yang
+                sudah tersimpan, lalu buka ruang guru untuk menyalinnya ke chat AI. Tidak ada pesan
+                yang dikirim otomatis.
+              </p>
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={() =>
+                  void run(async () => {
+                    if (
+                      dirty ||
+                      (pending &&
+                        !window.confirm(
+                          `Perubahan belum tersimpan tidak akan masuk snapshot. Buat snapshot revisi server ${work.revision}?`,
+                        ))
+                    )
+                      return;
+                    const key = `${work.id}:${work.revision}`;
+                    const id = (snapshotIds.current[key] ??= crypto.randomUUID());
+                    await call("/api/v2/snapshots", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        snapshotId: id,
+                        workId: work.id,
+                        expectedRevision: work.revision,
+                      }),
+                    });
+                    setMessage(`Snapshot revisi ${work.revision} dibuat.`);
+                    await refresh();
+                  })
+                }
+              >
+                Buat salinan jawaban
+              </Button>
+              <Link href="/manual/teacher" className={buttonVariants({ variant: "outline" })}>
+                Buka ruang guru
+              </Link>
+            </div>
+          </details>
         </section>
       )}
       {page === "teacher" && (
@@ -742,8 +818,8 @@ export function ManualLearning() {
           </p>
           {snapshots.items.length === 0 && (
             <p className="text-muted-foreground">
-              Belum ada snapshot. Buka latihan, simpan jawaban, lalu pilih “Buat snapshot revisi
-              server”.
+              Belum ada snapshot. Buka latihan, pilih “Minta penilaian guru AI”, lalu “Buat salinan
+              jawaban”.
             </p>
           )}
           <Link href="/manual/import" className="underline underline-offset-4">
@@ -763,7 +839,7 @@ export function ManualLearning() {
                   setContext(null);
                 }}
               />
-              {item.title} · revisi {item.revision} · {item.id}
+              {item.title} · revisi {item.revision}
             </label>
           ))}
           {snapshots.nextCursor && (
@@ -830,7 +906,7 @@ export function ManualLearning() {
                 <article className="rounded-md border p-3" key={feedback.id}>
                   <h3 className="font-medium">
                     {feedback.mode === "assessment" ? "Penilaian guru" : `Anotasi: ${feedback.tag}`}{" "}
-                    · {feedback.id}
+                    · {new Date(feedback.createdAt).toLocaleDateString("id-ID")}
                   </h3>
                   <p className="whitespace-pre-wrap">{feedback.summary}</p>
                   {feedback.mode === "assessment" &&
@@ -839,7 +915,9 @@ export function ManualLearning() {
                         {item.exerciseId}: {outcomeLabel[item.outcome]} — {item.feedback}
                       </p>
                     ))}
-                  {feedback.mode === "annotation" && <p>Menanggapi {feedback.inReplyTo}</p>}
+                  {feedback.mode === "annotation" && (
+                    <p>Catatan lanjutan untuk penilaian sebelumnya</p>
+                  )}
                 </article>
               ))}
             </div>

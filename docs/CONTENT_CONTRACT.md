@@ -87,7 +87,9 @@ Wajib: `schemaVersion:2`, `kind:"learning-work"`, `id` UUID, `packId`, `revision
 
 - `status`: `in_progress` atau `submitted`. Jeda tetap `in_progress`; submitted
   berarti pengguna mengakhiri pengerjaan, bukan sudah dinilai. Keduanya boleh
-  parsial dan diekspor. Submitted terkunci; pengerjaan baru memakai work ID baru.
+  parsial dan diekspor. Satu paket memakai satu work ID; submitted dapat dibuka
+  kembali untuk revisi sampai guru memberikan assessment. Setelah assessment,
+  jawaban terkunci; snapshot yang sudah dibuat tetap tidak berubah.
 - `currentExerciseId`: ID soal terakhir atau null. Reader memvalidasi ID terhadap paket.
 - `answers`: map maksimal 40 ID soal → `{response,comment}`. `response` adalah
   `{choiceId}`, `{text}` (<=2000), atau null. Comment <=2000 dan boleh kosong.
