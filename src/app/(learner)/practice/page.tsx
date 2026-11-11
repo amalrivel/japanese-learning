@@ -1,5 +1,7 @@
-import { PracticeList } from "@/features/practice/lists";
+import { redirect } from "next/navigation";
+
 export const instant = false;
-export default function PracticePage() {
-  return <PracticeList />;
+
+export default function Page() {
+  redirect("/manual");
 }

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { saveWorkV2Schema, submitWorkV2Schema } from "@/features/practice/work-v2-request";
+import { saveWorkV2Schema, submitWorkV2Schema } from "@/features/practice/model/work-v2-request";
 
 const work = JSON.parse(readFileSync("examples/learning-work.v2.json", "utf8"));
 const operationId = "2e78f588-a2a9-45be-b52f-1c9575d3b3a0";

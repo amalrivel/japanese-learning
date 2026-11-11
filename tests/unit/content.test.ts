@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { canonicalJson, validatePack } from "@/features/content/schema";
-import { learnerPack } from "@/features/content/projection";
+import { canonicalJson, validatePack } from "@/features/content/model/schema";
+import { learnerPack } from "@/features/content/model/projection";
 
 const fixture = JSON.parse(readFileSync("examples/learning-pack.v1.json", "utf8"));
 const copy = () => structuredClone(fixture);

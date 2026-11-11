@@ -6,13 +6,13 @@ import {
   readJson,
   withAuthenticatedUser,
 } from "@/lib/api/server";
-import { idSchema } from "@/features/content/schema";
-import { startSchema } from "@/features/practice/answers";
+import { idSchema } from "@/features/content/model/schema";
+import { startSchema } from "@/features/practice/model/answers";
 import {
   listAttempts,
   parseAttemptCursor,
   startAttempt,
-} from "@/features/practice/attempts.server";
+} from "@/features/practice/server/attempts.server";
 
 export function GET(request: Request) {
   return withAuthenticatedUser(request, async (uid) => {

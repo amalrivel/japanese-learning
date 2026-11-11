@@ -21,6 +21,14 @@ Hasilnya `{data}` atau `{error}` dengan `INVALID_JSON`, `PAYLOAD_TOO_LARGE`,
 untuk objek internal yang sudah melalui batas byte/depth; tidak menggantikan batas
 stream request API.
 
+Pratinjau `/manual` mencoba JSON asli terlebih dahulu. Jika sintaks tidak valid,
+UI dapat melepas pembungkus blok kode JSON, mengganti `&#x20;` di luar string menjadi
+spasi, dan menghapus backslash sebelum pergantian baris di luar string. Isi string
+materi/jawaban tidak diubah atau didekode sebagai HTML. Hasil tetap melewati validator
+yang sama; UI menampilkan pemberitahuan pembersihan dan memerlukan konfirmasi impor.
+API tetap menerima JSON ketat. Kegagalan schema menyediakan maksimal lima path
+bagian bermasalah untuk UI, tanpa menyertakan nilai input.
+
 - Semua objek strict, tanpa coercion/strip unknown keys. `schemaVersion` harus angka
   literal `2`. Root harus objek, `kind` harus dikenal. JSON.parse memakai nilai
   terakhir untuk property duplikat; persist/hash nilai yang sama setelah validasi.
@@ -79,7 +87,9 @@ Wajib: `schemaVersion:2`, `kind:"learning-work"`, `id` UUID, `packId`, `revision
 
 - `status`: `in_progress` atau `submitted`. Jeda tetap `in_progress`; submitted
   berarti pengguna mengakhiri pengerjaan, bukan sudah dinilai. Keduanya boleh
-  parsial dan diekspor. Submitted terkunci; pengerjaan baru memakai work ID baru.
+  parsial dan diekspor. Satu paket memakai satu work ID; submitted dapat dibuka
+  kembali untuk revisi sampai guru memberikan assessment. Setelah assessment,
+  jawaban terkunci; snapshot yang sudah dibuat tetap tidak berubah.
 - `currentExerciseId`: ID soal terakhir atau null. Reader memvalidasi ID terhadap paket.
 - `answers`: map maksimal 40 ID soal → `{response,comment}`. `response` adalah
   `{choiceId}`, `{text}` (<=2000), atau null. Comment <=2000 dan boleh kosong.

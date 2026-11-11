@@ -1,6 +1,6 @@
 import { apiError, apiJson, methodNotAllowed, withAuthenticatedUser } from "@/lib/api/server";
-import { idSchema } from "@/features/content/schema";
-import { getPack } from "@/features/content/packs.server";
+import { idSchema } from "@/features/content/model/schema";
+import { getPack } from "@/features/content/server/packs.server";
 export function GET(request: Request, context: { params: Promise<{ packId: string }> }) {
   return withAuthenticatedUser(request, async (uid) => {
     const { packId } = await context.params;

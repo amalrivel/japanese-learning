@@ -59,7 +59,7 @@ beforeEach(() => {
   );
 });
 it("preview and cancel never submit an import, including invalid input", async () => {
-  const { ImportForm } = await import("@/features/content/import-form");
+  const { ImportForm } = await import("@/features/content/components/import-form");
   const render = () => {
     h.index = 0;
     return ImportForm();
@@ -89,7 +89,7 @@ it("preview and cancel never submit an import, including invalid input", async (
 });
 
 it("ignores a response after the authenticated workspace unmounts", async () => {
-  const { ImportForm } = await import("@/features/content/import-form");
+  const { ImportForm } = await import("@/features/content/components/import-form");
   let resolveResponse!: (response: Response) => void;
   vi.stubGlobal(
     "fetch",
@@ -128,7 +128,7 @@ it("ignores a response after the authenticated workspace unmounts", async () => 
   ).toBeUndefined();
 });
 it("file and paste use the same preview and reject invalid UTF-8", async () => {
-  const { ImportForm } = await import("@/features/content/import-form");
+  const { ImportForm } = await import("@/features/content/components/import-form");
   const render = () => {
     h.index = 0;
     return ImportForm();
@@ -178,7 +178,7 @@ it("file and paste use the same preview and reject invalid UTF-8", async () => {
   );
 });
 it("confirms a file preview with the original JSON and clears it after success", async () => {
-  const { ImportForm } = await import("@/features/content/import-form");
+  const { ImportForm } = await import("@/features/content/components/import-form");
   const raw = readFileSync("examples/learning-pack.v1.json", "utf8");
   vi.stubGlobal(
     "fetch",

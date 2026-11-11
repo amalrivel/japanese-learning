@@ -1,5 +1,5 @@
-import { getPackV2 } from "@/features/content/packs-v2.server";
-import { idSchema } from "@/features/content/schema";
+import { getPackV2 } from "@/features/content/server/packs-v2.server";
+import { idSchema } from "@/features/content/model/schema";
 import { apiError, apiJson, withAuthenticatedUser } from "@/lib/api/server";
 
 type Context = { params: Promise<{ packId: string }> };

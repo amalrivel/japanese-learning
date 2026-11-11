@@ -2,6 +2,41 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+@layer components {
+  .learning-page {
+    @apply mx-auto w-full min-w-0 max-w-5xl flex-1 px-4 py-6 pb-12 sm:px-8 sm:py-10;
+    overflow-wrap: anywhere;
+  }
+  .learning-page > section {
+    @apply min-w-0;
+  }
+  .learning-page textarea,
+  .learning-page input:not([type="radio"]):not([type="checkbox"]) {
+    @apply min-h-11 max-w-full rounded-xl border border-input bg-background px-3 py-2 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30;
+  }
+  .learning-page textarea {
+    @apply w-full;
+  }
+  .learning-page input[type="radio"],
+  .learning-page input[type="checkbox"] {
+    @apply size-5 shrink-0 accent-primary;
+  }
+  .learning-page label:has(input[type="radio"]),
+  .learning-page label:has(input[type="checkbox"]) {
+    @apply min-h-11 py-2;
+  }
+  .learning-page > section:not([aria-label="Target belajar"]),
+  .learning-page > form {
+    @apply rounded-2xl border border-border bg-card p-5 text-card-foreground sm:p-6;
+  }
+  .learning-page pre {
+    @apply max-w-full overflow-x-auto rounded-xl bg-muted p-4 text-sm;
+  }
+  .learning-page [role="alert"] {
+    @apply rounded-xl border border-destructive/25 bg-destructive/5 p-4 text-destructive;
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

@@ -1,5 +1,5 @@
-import { assessmentSchema, attemptIdSchema } from "@/features/practice/answers";
-import { assessAttempt } from "@/features/practice/attempts.server";
+import { assessmentSchema, attemptIdSchema } from "@/features/practice/model/answers";
+import { assessAttempt } from "@/features/practice/server/attempts.server";
 import {
   apiError,
   apiJson,

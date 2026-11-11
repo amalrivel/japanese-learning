@@ -1,5 +1,18 @@
 # Arsitektur aplikasi belajar
 
+Keputusan navigasi terbaru (11 November 2026): UI produk hanya memakai alur v2.
+Beranda dan `/manual` menjadi tujuan utama; URL layar v1 mengarahkan ke bagian
+terbaru. Tidak ada konversi ID pekerjaan v1 menjadi v2. Implementasi API/domain
+v1 tetap internal untuk kompatibilitas dan pengujian, bukan alur navigasi produk.
+Bagian runtime v1 di bawah menjelaskan kemampuan internal yang dipertahankan.
+
+Workspace terbaru memakai layout persisten di `/manual`. Halaman ringkasan,
+panduan (`guide`), impor (`import`), paket/pekerjaan (`works`), latihan (`study`),
+dan ekspor/feedback (`teacher`) mempunyai URL masing-masing. Layout mempertahankan
+state browser ketika berpindah dengan Link; halaman latihan memakai query `pack`
+atau `work` agar dapat dibuka langsung dan dimuat ulang. Respons pemuatan route
+yang sudah ditinggalkan diabaikan agar tidak menimpa tampilan yang sedang aktif.
+
 Status (2026-11-02): runtime v1 dipertahankan dan alur guru manual serta
 pengalaman komuter v2 tersedia secara lokal. Kesiapan hosted tetap gate terpisah. Tujuan produk di [PRD](PRD.md), detail format di
 [CONTENT_CONTRACT](CONTENT_CONTRACT.md), urutan/bukti di [rencana](IMPLEMENTATION_PLAN.md).
@@ -11,6 +24,11 @@ Zod, shadcn Base UI, dan npm yang sudah terpasang. Tidak ada repository framewor
 database tambahan, atau panggilan API LLM. `src/app` hanya route/layout tipis;
 `src/features` memuat aturan domain/UI/persistensi konkret; `src/lib` memuat
 infrastruktur bersama. Modul Admin dan persistensi tetap `server-only`.
+
+Fitur dikelompokkan menurut domain `content`, `practice`, dan `analytics`, lalu
+menurut tanggung jawab `components`, `model`, `server`, dan `client` bila diperlukan.
+Draf lokal ditempatkan bersama dalam `practice/drafts`. Lihat
+[panduan struktur fitur](../src/features/README.md) untuk aturan penempatan modul.
 
 Akun Google yang masuk harus terdaftar di `APP_ALLOWED_UIDS`. Semua akses data
 melalui Route Handler yang memverifikasi Firebase bearer token (termasuk revocation
@@ -49,6 +67,10 @@ Rules/index lokal: `firestore.rules`, `firestore.indexes.json`. Query membutuhka
 composite `status ASC, completedAt DESC, __name__ DESC` dan
 `packId ASC, createdAt DESC, __name__ DESC`. Pengecualian indeks untuk `exercises`,
 `keys`, `answers`, `results`, `skills`. Keberhasilan emulator bukan bukti indeks cloud siap.
+Query paket v2 memerlukan override single-field `ASCENDING` dengan scope `COLLECTION`
+pada `learningWorks.work.packId` dan `teacherSnapshots.snapshot.pack.id`, karena map
+induk `work` dan `snapshot` dikecualikan dari indexing. Deploy konfigurasi indeks dan
+tunggu indeks siap sebelum merilis alur yang memakai query tersebut ke Firestore cloud.
 
 ## Progres dan beranda v2
 
@@ -106,8 +128,25 @@ Route baru berada di `/api/v2`: `packs` (daftar/detail/impor), `works`
 cursor ID dan halaman maksimal 50. Snapshot unik per pekerjaan/revisi; metadata
 operasi di bawah pekerjaan menyimpan receipt untuk retry save/submit. Retry dengan
 operation ID dan isi sama mengembalikan hasil semula; isi berbeda ditolak.
-Work submitted terkunci dan pengerjaan baru memerlukan work ID baru. Submit boleh
-parsial dan tidak menilai. Context membatasi 10 snapshot, 40 feedback, dan 512 KiB;
+Setiap paket memiliki satu pekerjaan utama melalui pointer `learningPacks.workId`.
+Transaksi start membaca dan memperbarui dokumen paket sehingga klik ganda atau dua
+tab mengembalikan pekerjaan yang sama. Duplikat historis tidak dihapus; daftar
+memilih pekerjaan berjawaban paling lengkap, lalu terbaru, sebelum pointer tersedia.
+Daftar menampilkan judul paket, bukan ID teknis.
+Beranda memakai pemilih pekerjaan utama yang sama dan melewati duplikat, termasuk
+lintas halaman hasil, saat mencari pekerjaan `in_progress` terbaru. Pekerjaan utama
+yang sudah submitted tidak digantikan oleh duplikat aktif yang tersembunyi.
+Tindakan Buka hanya mengubah URL; pemuatan editor mengikuti URL dan mengabaikan
+respons setelah navigasi berubah. Respons start juga tidak membuka editor jika
+pengguna sudah berpindah halaman; pekerjaan yang berhasil dibuat tetap tersimpan.
+
+Submit boleh parsial dan tidak menilai. Pekerjaan submitted bisa dibuka kembali
+melalui `POST /api/v2/works/{workId}` dengan operation ID dan revisi yang diharapkan.
+Receipt reopen terpisah menjaga retry dan ID pekerjaan tetap sama. Setelah assessment
+guru diimpor, metadata `reviewedAt` pada pekerjaan/paket mengunci save, submit,
+dan reopen. Riwayat snapshot lama juga diperiksa untuk assessment tanpa marker.
+Snapshot dan feedback lama tetap immutable meskipun pekerjaan direvisi sebelum dinilai.
+Context membatasi 10 snapshot, 40 feedback, dan 512 KiB;
 riwayat yang melampaui batas ditolak tanpa pemotongan. Penanda feedback per snapshot
 membuat transaksi impor bersamaan membaca dan memvalidasi ulang seluruh riwayat.
 

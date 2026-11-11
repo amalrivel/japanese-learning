@@ -8,7 +8,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-# Personalized Learning — panduan pengembangan
+<!-- # Personalized Learning — panduan pengembangan
 
 ## Baca terlebih dahulu
 
@@ -82,7 +82,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 Baca `SKILL.md` yang relevan sebelum dipakai; jangan memuat semua skill sekaligus.
 Gunakan `ui-ux-pro-max` untuk UI/UX, aksesibilitas, responsivitas, dan interaksi;
 `shadcn` untuk komponen Base UI. Panduan Next.js/React harus sesuai versi terpasang.
-Skill mendukung tujuan/batas dokumen produk, bukan memperluas cakupan tahap.
+Skill mendukung tujuan/batas dokumen produk, bukan memperluas cakupan tahap. -->
 
 ## graphify
 

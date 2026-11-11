@@ -1,5 +1,7 @@
-import { Report } from "@/features/analytics/report";
+import { redirect } from "next/navigation";
+
 export const instant = false;
-export default function ProgressPage() {
-  return <Report />;
+
+export default function Page() {
+  redirect("/");
 }

@@ -1,4 +1,4 @@
-import { completedWindow } from "@/features/analytics/progress.server";
+import { completedWindow } from "@/features/analytics/server/progress.server";
 import { apiJson, methodNotAllowed, withAuthenticatedUser } from "@/lib/api/server";
 export function GET(request: Request) {
   return withAuthenticatedUser(request, async (uid) =>

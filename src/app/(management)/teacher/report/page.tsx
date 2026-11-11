@@ -1,7 +1,7 @@
-import { Report } from "@/features/analytics/report";
-// AuthBoundary waits for browser sign-in before rendering this page.
+import { redirect } from "next/navigation";
+
 export const instant = false;
 
-export default function TeacherReportPage() {
-  return <Report teacher />;
+export default function Page() {
+  redirect("/manual/teacher");
 }

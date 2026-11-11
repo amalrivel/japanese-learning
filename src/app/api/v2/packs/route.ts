@@ -1,5 +1,5 @@
-import { listPacksV2 } from "@/features/content/packs-v2.server";
-import { idSchema } from "@/features/content/schema";
+import { listPacksV2 } from "@/features/content/server/packs-v2.server";
+import { idSchema } from "@/features/content/model/schema";
 import { apiError, apiJson, withAuthenticatedUser } from "@/lib/api/server";
 
 export function GET(request: Request) {

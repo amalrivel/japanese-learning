@@ -68,6 +68,19 @@ tertutup, masih memerlukan pengguna dan lingkungan hosted yang disetujui. Audit
 produksi terbaru juga masih menemukan dependency moderat; lihat bukti N5 sebelum
 menggunakan lingkungan hosted atau menyatakan rilis siap.
 
+## Privasi dari mesin pencari
+
+Setiap respons aplikasi meminta crawler mesin pencari untuk tidak mengindeks atau
+mengikuti tautan (`X-Robots-Tag: noindex, nofollow`); halaman juga menyertakan
+metadata robots yang sama. Jangan memblokir crawler melalui `robots.txt` jika
+crawler perlu membaca instruksi ini. Mesin pencari dapat memerlukan waktu untuk
+memperbarui hasil yang sudah ada dan tidak semua crawler mengikuti instruksi.
+
+Instruksi ini bukan perlindungan akses. Gunakan Firebase Auth, allowlist, dan
+konfigurasi hosted yang benar untuk melindungi data. Setelah perubahan tersedia
+pada hosted, periksa header dan metadata pada URL publik; jika hasil lama masih
+muncul, pemilik dapat menggunakan alat penghapusan mesin pencari yang sesuai.
+
 ## Menjalankan aplikasi
 
 Gunakan Node `>=24.15.0 <25` dan npm. `.nvmrc` memilih versi teruji 24.22.1;
@@ -80,13 +93,65 @@ npm ci
 npm run dev
 ```
 
-Buka [localhost:3000](http://localhost:3000). Route aktif mencakup `/manual` untuk v2 dan `/import`, `/practice`,
-`/history`, `/progress`, `/teacher/report`. Konfigurasi Firebase dan UID yang diizinkan
+`npm run dev` membaca `.env.local`; `npm run build` dan `npm start` membaca
+`.env`. Variabel yang sudah diberikan oleh lingkungan proses tetap didahulukan.
+Perubahan nilai berkas yang dipakai server (termasuk
+`APP_ALLOWED_UIDS`) dapat dimuat ulang saat development. Perubahan loader sendiri
+tetap memerlukan restart. Variabel yang diberikan langsung oleh proses tetap
+didahulukan daripada berkas.
+Jalankan build ulang setelah mengubah variabel `NEXT_PUBLIC_` karena nilainya
+ditanamkan saat build. Kedua berkas diabaikan Git dan harus disediakan sendiri.
+
+Buka [localhost:3000](http://localhost:3000). Seluruh navigasi memakai alur terbaru:
+`/manual` sebagai ringkasan belajar; `/manual/guide` untuk prompt guru AI,
+`/manual/import` untuk impor, `/manual/materials` untuk membaca materi,
+`/manual/works` untuk latihan tersimpan,
+`/manual/study` untuk latihan, dan `/manual/teacher` untuk berbagi jawaban ke guru;
+beranda memuat sesi belajar berikutnya. Menu Progres yang kosong sudah dihapus.
+URL lama `/import`, `/practice`, `/history`,
+`/progress`, dan `/teacher/report` diarahkan ke bagian terbaru yang sesuai.
+Konfigurasi Firebase dan UID yang diizinkan
 diperlukan; suite emulator membawa konfigurasi demo terpisah. Jangan memakai data
 atau kredensial produksi untuk tes. Instal devDependencies sebelum build karena
 Tailwind, TypeScript, dan stylesheet shadcn memerlukannya; jangan inisialisasi ulang.
 
+## Google Sign-In lokal dengan emulator
+
+Salin `.env.example` ke `.env.local` (cadangkan konfigurasi lokal yang sudah ada).
+Contoh ini memakai nilai fiktif dan proyek `demo-learning-pwa`; kredensial Google
+atau Firebase Admin asli tidak diperlukan. Cukup jalankan `npm run dev`:
+Auth Emulator, Firestore Emulator, dan Emulator UI dimulai terlebih dahulu,
+lalu aplikasi Next.js dijalankan setelah emulator siap. Tekan `Ctrl+C` untuk
+menghentikan semuanya. Java 21 atau lebih baru diperlukan oleh Firestore Emulator.
+Jika emulator sudah dijalankan secara terpisah, gunakan `npm run dev:app`
+untuk menjalankan aplikasi saja.
+
+Buka aplikasi di `http://localhost:3000`, lalu pilih tombol masuk Google.
+Popup Firebase Authentication Emulator memungkinkan penambahan akun Google
+fiktif, misalnya `learner@example.test`, tanpa login Google sungguhan.
+Lihat UID akun di `http://127.0.0.1:4000/auth`, masukkan UID tersebut ke
+`APP_ALLOWED_UIDS` dalam `.env.local`, simpan, lalu coba kembali setelah reload environment.
+Allowlist tetap berlaku untuk akses API belajar.
+
+Development menyimpan data emulator di `.firebase/dev-data` saat dihentikan
+normal dengan `Ctrl+C`, lalu memuatnya kembali pada startup berikutnya. Folder ini
+diabaikan Git. Akun fiktif dan UID tetap tersedia antar sesi; penghentian paksa
+dapat melewatkan ekspor terakhir. Jangan membagikan isi folder ini.
+
+Auth menggunakan `127.0.0.1:9099`; Firestore melalui Admin SDK menggunakan
+`127.0.0.1:8080`. Browser tidak mengakses Firestore langsung. Pertahankan ID
+`demo-learning-pwa` pada kedua konfigurasi agar data lokal terisolasi dari Cloud.
+Untuk production, gunakan konfigurasi Firebase asli di `.env`, nonaktifkan
+`NEXT_PUBLIC_USE_FIREBASE_EMULATORS`, dan jangan pasang kedua variabel host emulator.
+Alur Google Sign-In production tetap memakai provider Google yang sama.
+
 ## Pemeriksaan ringan selama pengembangan
+
+Di halaman `/manual/guide`, bagian **Mulai dengan guru AI** menyediakan prompt awal
+yang dapat disalin ke chat guru pilihan Anda. Prompt menyertakan contoh paket
+terbaru dari `examples/learning-pack.v2.json`; salin hasil JSON ke bagian Impor,
+periksa Pratinjau, lalu konfirmasi. Jika akses clipboard ditolak, buka teks prompt
+dan salin manual. Hasil AI tetap divalidasi oleh aplikasi sebelum disimpan.
 
 Untuk dokumen: periksa tautan, konsistensi status, contoh JSON, dan diff whitespace.
 Untuk fondasi v2, gunakan tes terfokus berikut:

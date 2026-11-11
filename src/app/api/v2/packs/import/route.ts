@@ -1,7 +1,7 @@
-import { withinDepthV2 } from "@/features/content/schema-v2";
-import { parseLearningDataV2 } from "@/features/analytics/teacher-schema-v2";
-import { importPackV2 } from "@/features/content/packs-v2.server";
-import { MAX_IMPORT_BYTES } from "@/features/content/schema";
+import { withinDepthV2 } from "@/features/content/model/schema-v2";
+import { parseLearningDataV2 } from "@/features/analytics/model/teacher-schema-v2";
+import { importPackV2 } from "@/features/content/server/packs-v2.server";
+import { MAX_IMPORT_BYTES } from "@/features/content/model/schema";
 import { apiError, apiJson, readJson, withAuthenticatedUser } from "@/lib/api/server";
 
 export function POST(request: Request) {

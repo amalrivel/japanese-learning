@@ -1,8 +1,8 @@
-import { withinDepthV2 } from "@/features/content/schema-v2";
+import { withinDepthV2 } from "@/features/content/model/schema-v2";
 import { z } from "zod";
-import { createSnapshotV2, listSnapshotsV2 } from "@/features/analytics/teacher-v2.server";
-import { revisionV2Schema } from "@/features/content/schema-v2";
-import { attemptIdSchema } from "@/features/practice/answers";
+import { createSnapshotV2, listSnapshotsV2 } from "@/features/analytics/server/teacher-v2.server";
+import { revisionV2Schema } from "@/features/content/model/schema-v2";
+import { attemptIdSchema } from "@/features/practice/model/answers";
 import { apiError, apiJson, readJson, withAuthenticatedUser } from "@/lib/api/server";
 
 const schema = z.strictObject({

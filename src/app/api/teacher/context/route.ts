@@ -1,5 +1,5 @@
 import { apiJson, methodNotAllowed, withAuthenticatedUser } from "@/lib/api/server";
-import { teacherContext } from "@/features/analytics/teacher.server";
+import { teacherContext } from "@/features/analytics/server/teacher.server";
 
 export function GET(request: Request) {
   return withAuthenticatedUser(request, async (uid) => apiJson(await teacherContext(uid)));

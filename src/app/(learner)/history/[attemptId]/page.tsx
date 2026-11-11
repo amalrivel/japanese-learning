@@ -1,6 +1,7 @@
-import { PracticeSession } from "@/features/practice/session";
+import { redirect } from "next/navigation";
+
 export const instant = false;
-export default async function AttemptPage({ params }: PageProps<"/history/[attemptId]">) {
-  const { attemptId } = await params;
-  return <PracticeSession key={attemptId} attemptId={attemptId} />;
+
+export default function Page() {
+  redirect("/manual/works");
 }

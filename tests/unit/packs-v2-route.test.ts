@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { importPack } = vi.hoisted(() => ({ importPack: vi.fn() }));
-vi.mock("@/features/content/packs-v2.server", () => ({ importPackV2: importPack }));
+vi.mock("@/features/content/server/packs-v2.server", () => ({ importPackV2: importPack }));
 vi.mock("@/lib/api/server", () => ({
   withAuthenticatedUser: (_request: Request, handler: (uid: string) => Promise<Response>) =>
     handler("owner"),

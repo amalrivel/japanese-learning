@@ -1,5 +1,5 @@
-import { contextV2 } from "@/features/analytics/teacher-v2.server";
-import { attemptIdSchema } from "@/features/practice/answers";
+import { contextV2 } from "@/features/analytics/server/teacher-v2.server";
+import { attemptIdSchema } from "@/features/practice/model/answers";
 import { apiError, apiJson, withAuthenticatedUser } from "@/lib/api/server";
 
 export function GET(request: Request) {

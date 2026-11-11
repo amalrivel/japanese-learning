@@ -6,8 +6,8 @@ import {
   readJson,
   withAuthenticatedUser,
 } from "@/lib/api/server";
-import { attemptIdSchema, draftSchema } from "@/features/practice/answers";
-import { getAttempt, saveAttempt } from "@/features/practice/attempts.server";
+import { attemptIdSchema, draftSchema } from "@/features/practice/model/answers";
+import { getAttempt, saveAttempt } from "@/features/practice/server/attempts.server";
 
 type Context = { params: Promise<{ attemptId: string }> };
 export function GET(request: Request, context: Context) {

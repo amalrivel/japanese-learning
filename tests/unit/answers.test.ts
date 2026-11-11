@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { learnerPack } from "@/features/content/projection";
-import { learningPackSchema, normalizeAnswer } from "@/features/content/schema";
+import { learnerPack } from "@/features/content/model/projection";
+import { learningPackSchema, normalizeAnswer } from "@/features/content/model/schema";
 import {
   attemptIdSchema,
   draftSchema,
@@ -9,7 +9,7 @@ import {
   validateAnswers,
   validateCompleteAnswers,
   matchesAccepted,
-} from "@/features/practice/answers";
+} from "@/features/practice/model/answers";
 
 const pack = learnerPack(
   learningPackSchema.parse(JSON.parse(readFileSync("examples/learning-pack.v1.json", "utf8"))),

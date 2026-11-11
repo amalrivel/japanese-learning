@@ -1,6 +1,6 @@
-import { withinDepthV2 } from "@/features/content/schema-v2";
-import { parseLearningDataV2 } from "@/features/analytics/teacher-schema-v2";
-import { importFeedbackV2 } from "@/features/analytics/teacher-v2.server";
+import { withinDepthV2 } from "@/features/content/model/schema-v2";
+import { parseLearningDataV2 } from "@/features/analytics/model/teacher-schema-v2";
+import { importFeedbackV2 } from "@/features/analytics/server/teacher-v2.server";
 import { apiError, apiJson, readJson, withAuthenticatedUser } from "@/lib/api/server";
 
 export function POST(request: Request) {

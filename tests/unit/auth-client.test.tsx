@@ -54,9 +54,11 @@ vi.mock("firebase/auth", () => ({
   signOut: vi.fn(),
 }));
 vi.mock("@/components/ui/button", () => ({
+  buttonVariants: () => "",
   Button: ({ children, onClick }: { children: ReactNode; onClick: () => void }) =>
     createElement("button", { onClick }, children),
 }));
+vi.mock("@/components/workspace-nav", () => ({ WorkspaceNav: () => null }));
 
 async function mount() {
   const { AuthProvider, useAuth } = await import("@/lib/auth/client");
