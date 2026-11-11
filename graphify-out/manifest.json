@@ -198,9 +198,9 @@
     "semantic_hash": ""
   },
   "docs/ARCHITECTURE.md": {
-    "mtime": 1794390933.235915,
-    "seen": 1794391015.3243668,
-    "ast_hash": "808ddcd2ea9ee33f8d5c87cec0333c93",
+    "mtime": 1794427060.4136574,
+    "seen": 1794427077.8073845,
+    "ast_hash": "9901e2533774d2b62c3ff896311d34ce",
     "semantic_hash": ""
   },
   "docs/CONTENT_CONTRACT.md": {
@@ -258,9 +258,9 @@
     "semantic_hash": "3991dfa9d1d0ee308f5ca36fe130ed15"
   },
   "firestore.indexes.json": {
-    "mtime": 1793830432.91736,
-    "seen": 1793830456.4969513,
-    "ast_hash": "92f1ff79376925daf22a2db9c3e9fa02",
+    "mtime": 1794427044.413583,
+    "seen": 1794427077.807071,
+    "ast_hash": "29412559e8e394d54821c0c9d7d108b9",
     "semantic_hash": ""
   },
   "playwright.config.ts": {
@@ -1791,6 +1791,12 @@
     "mtime": 1794374044.0801475,
     "seen": 1794374405.4212878,
     "ast_hash": "1d7adb69c118e5213771410240e6317e",
+    "semantic_hash": ""
+  },
+  "tests/unit/firestore-indexes.test.ts": {
+    "mtime": 1794427060.833643,
+    "seen": 1794427077.8072386,
+    "ast_hash": "c9c2b0bff9d2904bed756a26db903ffd",
     "semantic_hash": ""
   }
 }

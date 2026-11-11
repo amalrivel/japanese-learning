@@ -67,6 +67,10 @@ Rules/index lokal: `firestore.rules`, `firestore.indexes.json`. Query membutuhka
 composite `status ASC, completedAt DESC, __name__ DESC` dan
 `packId ASC, createdAt DESC, __name__ DESC`. Pengecualian indeks untuk `exercises`,
 `keys`, `answers`, `results`, `skills`. Keberhasilan emulator bukan bukti indeks cloud siap.
+Query paket v2 memerlukan override single-field `ASCENDING` dengan scope `COLLECTION`
+pada `learningWorks.work.packId` dan `teacherSnapshots.snapshot.pack.id`, karena map
+induk `work` dan `snapshot` dikecualikan dari indexing. Deploy konfigurasi indeks dan
+tunggu indeks siap sebelum merilis alur yang memakai query tersebut ke Firestore cloud.
 
 ## Progres dan beranda v2
 

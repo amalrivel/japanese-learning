@@ -48,6 +48,12 @@
     { "collectionGroup": "operations", "fieldPath": "work", "indexes": [] },
     { "collectionGroup": "teacherSnapshots", "fieldPath": "snapshot", "indexes": [] },
     { "collectionGroup": "teacherFeedback", "fieldPath": "feedback", "indexes": [] },
+    { "collectionGroup": "learningWorks", "fieldPath": "work.packId", "indexes": [
+      { "order": "ASCENDING", "queryScope": "COLLECTION" }
+    ] },
+    { "collectionGroup": "teacherSnapshots", "fieldPath": "snapshot.pack.id", "indexes": [
+      { "order": "ASCENDING", "queryScope": "COLLECTION" }
+    ] },
     { "collectionGroup": "learningWorks", "fieldPath": "work.updatedAt", "indexes": [
       { "order": "ASCENDING", "queryScope": "COLLECTION" },
       { "order": "DESCENDING", "queryScope": "COLLECTION" }
